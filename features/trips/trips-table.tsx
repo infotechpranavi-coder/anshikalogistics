@@ -220,7 +220,7 @@ export function TripsTable({
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-        <table className="w-full min-w-[1050px] text-sm">
+        <table className="w-full min-w-262.5 text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
             {table.getHeaderGroups().map((group) => (
               <tr key={group.id}>

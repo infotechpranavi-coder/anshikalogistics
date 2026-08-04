@@ -56,7 +56,7 @@ export function LiveInvoicePreview({ data }: LiveInvoicePreviewProps) {
   ]);
 
   return (
-    <article className="invoice-preview mx-auto aspect-[1/1.414] w-full max-w-[760px] overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-900 shadow-lg print:aspect-auto print:max-w-none print:rounded-none print:border-0 print:shadow-none">
+    <article className="invoice-preview mx-auto aspect-[1/1.414] w-full max-w-190 overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-900 shadow-lg print:aspect-auto print:max-w-none print:rounded-none print:border-0 print:shadow-none">
       <div className="flex h-full flex-col p-6 sm:p-8">
         <header className="flex items-start justify-between gap-6 border-b-2 border-slate-800 pb-5">
           <div className="flex items-center gap-4">

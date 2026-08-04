@@ -74,7 +74,7 @@ export function CommandMenu() {
         </Command.Empty>
         <Command.Group
           heading="Navigate"
-          className="text-xs font-medium text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-2"
+          className="text-xs font-medium text-muted-foreground **:[[cmdk-group-heading]]:px-2 **:[[cmdk-group-heading]]:py-2"
         >
           {destinations.map(({ label, href, icon: Icon }) => (
             <Command.Item

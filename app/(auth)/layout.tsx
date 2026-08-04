@@ -5,7 +5,7 @@ export default function AuthLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-slate-50 via-white to-teal-50 px-4 py-12">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-linear-to-br from-slate-50 via-white to-teal-50 px-4 py-12">
       <div
         aria-hidden="true"
         className="absolute -left-32 top-1/4 h-80 w-80 rounded-full bg-teal-200/40 blur-3xl"
