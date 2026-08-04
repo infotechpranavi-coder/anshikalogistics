@@ -31,31 +31,44 @@ declare module "@auth/core/jwt" {
   }
 }
 
-function resolveAuthUrl() {
+/**
+ * Never use VERCEL_URL — it is a per-deploy hostname and breaks login on
+ * the stable production domain (anshikalogistics.vercel.app).
+ */
+function resolveAuthUrl(): string | undefined {
   const configured = process.env.AUTH_URL || process.env.NEXTAUTH_URL;
-  if (configured && !configured.includes("localhost")) {
+  if (configured && !/localhost|127\.0\.0\.1/i.test(configured)) {
     return configured.replace(/\/$/, "");
   }
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL.replace(/\/$/, "")}`;
+
+  const productionHost = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  if (productionHost) {
+    const host = productionHost.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    return `https://${host}`;
   }
-  return configured?.replace(/\/$/, "") || "http://localhost:3000";
+
+  return undefined;
 }
 
-// Fix wrong localhost AUTH_URL on Vercel before NextAuth initializes.
 const authUrl = resolveAuthUrl();
-if (process.env.VERCEL || process.env.VERCEL_URL) {
+if (authUrl) {
   process.env.AUTH_URL = authUrl;
   process.env.NEXTAUTH_URL = authUrl;
-  process.env.AUTH_TRUST_HOST = "true";
 }
+process.env.AUTH_TRUST_HOST = "true";
+
+const authSecret =
+  process.env.AUTH_SECRET ||
+  process.env.NEXTAUTH_SECRET ||
+  "fleetfuel-dev-secret-change-in-production-8f3a9c2e";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   trustHost: true,
-  secret: process.env.AUTH_SECRET,
+  secret: authSecret,
   providers: [
     Credentials({
+      id: "credentials",
       name: "credentials",
       credentials: {
         email: { label: "Email", type: "email" },
@@ -70,11 +83,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const password = String(credentials.password);
 
         try {
-          const user = await prisma.user.findUnique({
-            where: { email },
-          });
+          const user = await prisma.user.findUnique({ where: { email } });
 
-          if (!user || !user.password || !user.isActive) {
+          if (!user?.password || !user.isActive) {
             return null;
           }
 
@@ -111,9 +122,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async session({ session, token }) {
       if (token && session.user) {
-        session.user.id = token.id;
-        session.user.role = token.role;
-        session.user.companyId = token.companyId;
+        session.user.id = token.id as string;
+        session.user.role = token.role as Role;
+        session.user.companyId = token.companyId as string | null | undefined;
       }
       return session;
     },

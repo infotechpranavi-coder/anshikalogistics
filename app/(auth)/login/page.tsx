@@ -34,25 +34,37 @@ export default function LoginPage() {
 
   async function onSubmit(values: LoginInput) {
     setServerError(null);
-    const result = await signIn("credentials", {
-      ...values,
-      redirect: false,
-    });
+    try {
+      const result = await signIn("credentials", {
+        email: values.email.trim().toLowerCase(),
+        password: values.password,
+        redirect: false,
+      });
 
-    if (result?.error) {
-      setServerError("The email or password you entered is incorrect.");
-      return;
+      if (result?.error) {
+        setServerError(
+          "The email or password you entered is incorrect. Use admin@fleetfuel.com / password123 or create an account."
+        );
+        return;
+      }
+
+      if (result?.ok === false) {
+        setServerError("Unable to sign in. Please try again.");
+        return;
+      }
+
+      const callbackUrl = new URLSearchParams(window.location.search).get(
+        "callbackUrl"
+      );
+      const destination =
+        callbackUrl?.startsWith("/") && !callbackUrl.startsWith("//")
+          ? callbackUrl
+          : "/dashboard";
+      router.push(destination);
+      router.refresh();
+    } catch {
+      setServerError("Unable to sign in right now. Please try again.");
     }
-
-    const callbackUrl = new URLSearchParams(window.location.search).get(
-      "callbackUrl"
-    );
-    const destination =
-      callbackUrl?.startsWith("/") && !callbackUrl.startsWith("//")
-        ? callbackUrl
-        : "/dashboard";
-    router.push(destination);
-    router.refresh();
   }
 
   return (
