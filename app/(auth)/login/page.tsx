@@ -43,7 +43,7 @@ export default function LoginPage() {
 
       if (result?.error) {
         setServerError(
-          "The email or password you entered is incorrect. Use admin@fleetfuel.com / password123 or create an account."
+          "Login failed. If this keeps happening on the live site, allow 0.0.0.0/0 in MongoDB Atlas Network Access, then try admin@fleetfuel.com / password123."
         );
         return;
       }
