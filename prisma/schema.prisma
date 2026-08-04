@@ -1,0 +1,424 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  OPERATOR
+  DRIVER
+}
+
+enum VehicleStatus {
+  ACTIVE
+  MAINTENANCE
+  INACTIVE
+  SOLD
+}
+
+enum FuelType {
+  DIESEL
+  PETROL
+  CNG
+  ELECTRIC
+  HYBRID
+}
+
+enum TripStatus {
+  DRAFT
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  UPI
+  BANK
+  CHEQUE
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIAL
+  PAID
+  OVERDUE
+}
+
+enum ExpenseType {
+  TRIP
+  GENERAL
+  VEHICLE
+  DRIVER
+}
+
+enum ExpenseCategory {
+  TOLL
+  PARKING
+  FOOD
+  REPAIR
+  POLICE_FINE
+  ADVANCE
+  MISC
+  FUEL
+  SALARY
+  INSURANCE
+  MAINTENANCE
+  OTHER
+}
+
+enum InvoiceStatus {
+  DRAFT
+  GENERATED
+  SENT
+  PAID
+  CANCELLED
+}
+
+enum NotificationType {
+  INSURANCE_EXPIRY
+  PERMIT_EXPIRY
+  FITNESS_EXPIRY
+  POLLUTION_EXPIRY
+  LICENSE_EXPIRY
+  PENDING_PAYMENT
+  UPCOMING_TRIP
+  SYSTEM
+}
+
+model User {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  name          String
+  email         String    @unique
+  emailVerified DateTime?
+  password      String?
+  image         String?
+  phone         String?
+  role          Role      @default(OPERATOR)
+  isActive      Boolean   @default(true)
+  companyId     String?   @db.ObjectId
+  company       Company?  @relation(fields: [companyId], references: [id])
+  accounts      Account[]
+  sessions      Session[]
+  drivers       Driver[]
+  trips         Trip[]    @relation("TripCreatedBy")
+  expenses      Expense[] @relation("ExpenseCreatedBy")
+  auditLogs     AuditLog[]
+  notifications Notification[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Account {
+  id                String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String  @db.ObjectId
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.String
+  access_token      String? @db.String
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.String
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  sessionToken String   @unique
+  userId       String   @db.ObjectId
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Company {
+  id                   String     @id @default(auto()) @map("_id") @db.ObjectId
+  name                 String
+  logo                 String?
+  address              String?
+  city                 String?
+  state                String?
+  pincode              String?
+  country              String     @default("India")
+  gst                  String?
+  phone                String?
+  email                String?
+  website              String?
+  invoicePrefix        String     @default("INV")
+  invoiceStartingNumber Int       @default(1)
+  currency             String     @default("INR")
+  timezone             String     @default("Asia/Kolkata")
+  signature            String?
+  bankName             String?
+  bankAccount          String?
+  bankIfsc             String?
+  upiId                String?
+  users                User[]
+  vehicles             Vehicle[]
+  drivers              Driver[]
+  trips                Trip[]
+  expenses             Expense[]
+  invoices             Invoice[]
+  settings             Setting[]
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+}
+
+model Vehicle {
+  id               String        @id @default(auto()) @map("_id") @db.ObjectId
+  number           String
+  type             String
+  make             String?
+  model            String?
+  year             Int?
+  owner            String?
+  fuelType         FuelType      @default(DIESEL)
+  status           VehicleStatus @default(ACTIVE)
+  mileage          Float         @default(0)
+  capacity         Float?
+  insuranceNumber  String?
+  insuranceExpiry  DateTime?
+  fitnessExpiry    DateTime?
+  permitExpiry     DateTime?
+  pollutionExpiry  DateTime?
+  chassisNumber    String?
+  engineNumber     String?
+  notes            String?
+  companyId        String        @db.ObjectId
+  company          Company       @relation(fields: [companyId], references: [id])
+  currentDriverId  String?       @db.ObjectId
+  currentDriver    Driver?       @relation("CurrentVehicle", fields: [currentDriverId], references: [id])
+  trips            Trip[]
+  expenses         Expense[]
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@unique([companyId, number])
+  @@index([companyId, status])
+}
+
+model Driver {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  phone           String
+  alternatePhone  String?
+  licenseNumber   String?
+  licenseExpiry   DateTime?
+  address         String?
+  salary          Float     @default(0)
+  joiningDate     DateTime?
+  isActive        Boolean   @default(true)
+  notes           String?
+  companyId       String    @db.ObjectId
+  company         Company   @relation(fields: [companyId], references: [id])
+  userId          String?   @db.ObjectId
+  user            User?     @relation(fields: [userId], references: [id])
+  currentVehicles Vehicle[] @relation("CurrentVehicle")
+  trips           Trip[]
+  expenses        Expense[]
+  attendance      Attendance[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([companyId, isActive])
+  @@index([userId])
+}
+
+model Attendance {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  driverId  String   @db.ObjectId
+  driver    Driver   @relation(fields: [driverId], references: [id])
+  date      DateTime
+  present   Boolean  @default(true)
+  notes     String?
+  createdAt DateTime @default(now())
+
+  @@unique([driverId, date])
+}
+
+model Trip {
+  id              String         @id @default(auto()) @map("_id") @db.ObjectId
+  tripNumber      String
+  tripDate        DateTime
+  tripTime        String?
+  source          String
+  destination     String
+  loadingKm       Float          @default(0)
+  unloadingKm     Float          @default(0)
+  distance        Float          @default(0)
+  isLoaded        Boolean        @default(true)
+  isEmpty         Boolean        @default(false)
+  remarks         String?
+  dieselRate      Float          @default(0)
+  mileage         Float          @default(0)
+  fuelFilled      Float          @default(0)
+  fuelRequired    Float          @default(0)
+  fuelCost        Float          @default(0)
+  toll            Float          @default(0)
+  parking         Float          @default(0)
+  food            Float          @default(0)
+  repair          Float          @default(0)
+  policeFine      Float          @default(0)
+  advance         Float          @default(0)
+  miscExpense     Float          @default(0)
+  expenseTotal    Float          @default(0)
+  grandTotal      Float          @default(0)
+  paidAmount      Float          @default(0)
+  pendingAmount   Float          @default(0)
+  paymentMethod   PaymentMethod?
+  voucherNumber   String?
+  narration       String?
+  status          TripStatus     @default(DRAFT)
+  vehicleId       String         @db.ObjectId
+  vehicle         Vehicle        @relation(fields: [vehicleId], references: [id])
+  driverId        String?        @db.ObjectId
+  driver          Driver?        @relation(fields: [driverId], references: [id])
+  driverPhone     String?
+  companyId       String         @db.ObjectId
+  company         Company        @relation(fields: [companyId], references: [id])
+  createdById     String         @db.ObjectId
+  createdBy       User           @relation("TripCreatedBy", fields: [createdById], references: [id])
+  invoice         Invoice?
+  expenses        Expense[]
+  payments        Payment[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@unique([companyId, tripNumber])
+  @@index([companyId, tripDate])
+  @@index([companyId, status])
+  @@index([vehicleId])
+  @@index([driverId])
+}
+
+model Expense {
+  id          String          @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  amount      Float
+  type        ExpenseType     @default(GENERAL)
+  category    ExpenseCategory @default(OTHER)
+  date        DateTime        @default(now())
+  description String?
+  receiptUrl  String?
+  tripId      String?         @db.ObjectId
+  trip        Trip?           @relation(fields: [tripId], references: [id])
+  vehicleId   String?         @db.ObjectId
+  vehicle     Vehicle?        @relation(fields: [vehicleId], references: [id])
+  driverId    String?         @db.ObjectId
+  driver      Driver?         @relation(fields: [driverId], references: [id])
+  companyId   String          @db.ObjectId
+  company     Company         @relation(fields: [companyId], references: [id])
+  createdById String          @db.ObjectId
+  createdBy   User            @relation("ExpenseCreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([companyId, date])
+  @@index([companyId, type])
+}
+
+model Invoice {
+  id            String        @id @default(auto()) @map("_id") @db.ObjectId
+  invoiceNumber String
+  invoiceDate   DateTime      @default(now())
+  status        InvoiceStatus @default(DRAFT)
+  subtotal      Float         @default(0)
+  taxAmount     Float         @default(0)
+  grandTotal    Float         @default(0)
+  paidAmount    Float         @default(0)
+  pendingAmount Float         @default(0)
+  notes         String?
+  qrCode        String?
+  pdfUrl        String?
+  tripId        String        @unique @db.ObjectId
+  trip          Trip          @relation(fields: [tripId], references: [id])
+  companyId     String        @db.ObjectId
+  company       Company       @relation(fields: [companyId], references: [id])
+  payments      Payment[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@unique([companyId, invoiceNumber])
+  @@index([companyId, status])
+}
+
+model Payment {
+  id            String        @id @default(auto()) @map("_id") @db.ObjectId
+  amount        Float
+  method        PaymentMethod @default(CASH)
+  status        PaymentStatus @default(PAID)
+  paymentDate   DateTime      @default(now())
+  reference     String?
+  notes         String?
+  tripId        String?       @db.ObjectId
+  trip          Trip?         @relation(fields: [tripId], references: [id])
+  invoiceId     String?       @db.ObjectId
+  invoice       Invoice?      @relation(fields: [invoiceId], references: [id])
+  companyId     String        @db.ObjectId
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([companyId, paymentDate])
+}
+
+model Setting {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  key       String
+  value     String
+  companyId String   @db.ObjectId
+  company   Company  @relation(fields: [companyId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId, key])
+}
+
+model AuditLog {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  action     String
+  entity     String
+  entityId   String?
+  details    String?
+  ipAddress  String?
+  userId     String?  @db.ObjectId
+  user       User?    @relation(fields: [userId], references: [id])
+  companyId  String?  @db.ObjectId
+  createdAt  DateTime @default(now())
+
+  @@index([companyId, createdAt])
+  @@index([entity, entityId])
+}
+
+model Notification {
+  id        String           @id @default(auto()) @map("_id") @db.ObjectId
+  title     String
+  message   String
+  type      NotificationType @default(SYSTEM)
+  isRead    Boolean          @default(false)
+  link      String?
+  userId    String           @db.ObjectId
+  user      User             @relation(fields: [userId], references: [id])
+  companyId String?          @db.ObjectId
+  createdAt DateTime         @default(now())
+
+  @@index([userId, isRead])
+}
