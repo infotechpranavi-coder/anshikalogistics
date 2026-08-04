@@ -97,6 +97,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const password = String(credentials.password);
 
         try {
+          if (!process.env.DATABASE_URL) {
+            console.error("Auth authorize error: DATABASE_URL missing");
+            throw new Error("DATABASE_URL missing");
+          }
+
           const user = await prisma.user.findUnique({ where: { email } });
 
           if (!user?.password || !user.isActive) {
