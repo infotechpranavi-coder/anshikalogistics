@@ -9,6 +9,7 @@ import {
   Gauge,
   MapPinned,
   Plus,
+  ReceiptText,
   Route,
   Truck,
   Users,
