@@ -1,6 +1,5 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { authConfig } from "@/lib/auth.config";
 import { prisma } from "@/lib/prisma";
@@ -32,9 +31,29 @@ declare module "@auth/core/jwt" {
   }
 }
 
+function resolveAuthUrl() {
+  const configured = process.env.AUTH_URL || process.env.NEXTAUTH_URL;
+  if (configured && !configured.includes("localhost")) {
+    return configured.replace(/\/$/, "");
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL.replace(/\/$/, "")}`;
+  }
+  return configured?.replace(/\/$/, "") || "http://localhost:3000";
+}
+
+// Fix wrong localhost AUTH_URL on Vercel before NextAuth initializes.
+const authUrl = resolveAuthUrl();
+if (process.env.VERCEL || process.env.VERCEL_URL) {
+  process.env.AUTH_URL = authUrl;
+  process.env.NEXTAUTH_URL = authUrl;
+  process.env.AUTH_TRUST_HOST = "true";
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
-  adapter: PrismaAdapter(prisma),
+  trustHost: true,
+  secret: process.env.AUTH_SECRET,
   providers: [
     Credentials({
       name: "credentials",
@@ -47,28 +66,33 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
-        const email = credentials.email as string;
-        const password = credentials.password as string;
+        const email = String(credentials.email).trim().toLowerCase();
+        const password = String(credentials.password);
 
-        const user = await prisma.user.findUnique({
-          where: { email },
-        });
+        try {
+          const user = await prisma.user.findUnique({
+            where: { email },
+          });
 
-        if (!user || !user.password || !user.isActive) {
+          if (!user || !user.password || !user.isActive) {
+            return null;
+          }
+
+          const isValid = await bcrypt.compare(password, user.password);
+          if (!isValid) return null;
+
+          return {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            image: user.image,
+            role: user.role,
+            companyId: user.companyId,
+          };
+        } catch (error) {
+          console.error("Auth authorize error:", error);
           return null;
         }
-
-        const isValid = await bcrypt.compare(password, user.password);
-        if (!isValid) return null;
-
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          image: user.image,
-          role: user.role,
-          companyId: user.companyId,
-        };
       },
     }),
   ],
