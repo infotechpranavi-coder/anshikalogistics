@@ -37,11 +37,25 @@ declare module "@auth/core/jwt" {
  */
 function resolveAuthUrl(): string | undefined {
   const configured = process.env.AUTH_URL || process.env.NEXTAUTH_URL;
-  if (configured && !/localhost|127\.0\.0\.1/i.test(configured)) {
+
+  // Ignore localhost and ignore ephemeral *.vercel.app deployment hosts
+  // (except the stable project production domain).
+  const isEphemeralVercelHost = (url: string) =>
+    /https?:\/\/[^/]+-[\w]+-[\w.-]+\.vercel\.app/i.test(url) ||
+    (/vercel\.app/i.test(url) && !/anshikalogistics\.vercel\.app/i.test(url));
+
+  if (
+    configured &&
+    !/localhost|127\.0\.0\.1/i.test(configured) &&
+    !isEphemeralVercelHost(configured)
+  ) {
     return configured.replace(/\/$/, "");
   }
 
-  const productionHost = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  const productionHost =
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ||
+    (process.env.VERCEL ? "anshikalogistics.vercel.app" : undefined);
+
   if (productionHost) {
     const host = productionHost.replace(/^https?:\/\//, "").replace(/\/$/, "");
     return `https://${host}`;
