@@ -36,7 +36,7 @@ export interface TripEntryFormProps {
     fuelType: string;
     mileage: number;
   }[];
-  drivers: { id: string; name: string; phone: string }[];
+  drivers?: { id: string; name: string; phone: string }[];
   defaultValues?: Partial<TripFormValues> & {
     distance?: number;
     fuelRequired?: number;

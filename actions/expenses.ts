@@ -78,7 +78,12 @@ export async function getExpenses(filters: ExpenseFilters = {}) {
     ...(filters.from || filters.to ? { date: { ...(filters.from ? { gte: new Date(filters.from) } : {}), ...(filters.to ? { lte: new Date(filters.to) } : {}) } } : {}),
   };
   try {
-    const data = await prisma.expense.findMany({ where, include: { vehicle: { select: { id: true, number: true } }, driver: { select: { id: true, name: true } }, trip: { select: { id: true, tripNumber: true } } }, orderBy: [{ date: "desc" }, { createdAt: "desc" }] });
+    const data = await prisma.expense.findMany({
+      where,
+      include: { vehicle: { select: { id: true, number: true } }, driver: { select: { id: true, name: true } }, trip: { select: { id: true, tripNumber: true } } },
+      orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+      take: 150,
+    });
     return { success: true, data } satisfies ActionResult<typeof data>;
   } catch (error) { return fail(error); }
 }

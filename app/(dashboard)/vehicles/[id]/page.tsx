@@ -17,7 +17,7 @@ export default async function VehicleDetailPage({
   const { id } = await params;
   const [vehicleResult, tripsResult] = await Promise.all([
     getVehicleById(id),
-    getTrips({ pageSize: 5000, vehicleId: id }),
+    getTrips({ pageSize: 50, vehicleId: id }),
   ]);
   if (!vehicleResult.data) notFound();
 

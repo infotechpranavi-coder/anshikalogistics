@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -16,7 +17,6 @@ import {
   WalletCards,
 } from "lucide-react";
 import type { DashboardData } from "@/actions/dashboard";
-import { DashboardCharts } from "@/features/dashboard/dashboard-charts";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
@@ -32,6 +32,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatCurrency, formatDate } from "@/lib/utils";
+
+const DashboardCharts = dynamic(
+  () =>
+    import("@/features/dashboard/dashboard-charts").then(
+      (mod) => mod.DashboardCharts
+    ),
+  {
+    ssr: false,
+    loading: () => <div className="h-72 animate-pulse rounded-xl bg-slate-100" />,
+  }
+);
 
 export type DashboardViewProps = DashboardData;
 

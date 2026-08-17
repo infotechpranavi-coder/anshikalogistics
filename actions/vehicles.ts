@@ -138,7 +138,22 @@ export async function getVehicles(options: { search?: string; status?: VehicleIn
   try {
     const data = await prisma.vehicle.findMany({
       where: { companyId: user.companyId, ...(options.status ? { status: options.status } : {}), ...(search ? { OR: [{ number: { contains: search, mode: "insensitive" } }, { make: { contains: search, mode: "insensitive" } }, { model: { contains: search, mode: "insensitive" } }] } : {}) },
-      include, orderBy: { number: "asc" },
+      select: {
+        id: true,
+        number: true,
+        type: true,
+        make: true,
+        model: true,
+        status: true,
+        fuelType: true,
+        mileage: true,
+        insuranceExpiry: true,
+        fitnessExpiry: true,
+        permitExpiry: true,
+        pollutionExpiry: true,
+        currentDriver: { select: { name: true } },
+      },
+      orderBy: { number: "asc" },
     });
     return { success: true, data } satisfies ActionResult<typeof data>;
   } catch (error) { return fail(error); }

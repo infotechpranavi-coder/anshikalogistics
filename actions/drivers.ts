@@ -109,7 +109,18 @@ export async function getDrivers(options: { search?: string; active?: boolean } 
   try {
     const data = await prisma.driver.findMany({
       where: { companyId: user.companyId, ...(typeof options.active === "boolean" ? { isActive: options.active } : {}), ...(search ? { OR: [{ name: { contains: search, mode: "insensitive" } }, { phone: { contains: search, mode: "insensitive" } }, { licenseNumber: { contains: search, mode: "insensitive" } }] } : {}) },
-      include, orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        licenseNumber: true,
+        licenseExpiry: true,
+        salary: true,
+        isActive: true,
+        joiningDate: true,
+        currentVehicles: { select: { number: true } },
+      },
+      orderBy: { name: "asc" },
     });
     return { success: true, data } satisfies ActionResult<typeof data>;
   } catch (error) { return fail(error); }

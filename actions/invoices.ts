@@ -23,8 +23,14 @@ const fail = (error: unknown): ActionResult<never> => {
 async function nextNumber(companyId: string) {
   const company = await prisma.company.findUnique({ where: { id: companyId }, select: { invoicePrefix: true, invoiceStartingNumber: true } });
   if (!company) throw new Error("Company not found");
-  const count = await prisma.invoice.count({ where: { companyId } });
-  return generateInvoiceNumber(company.invoicePrefix, company.invoiceStartingNumber + count);
+  const last = await prisma.invoice.findFirst({
+    where: { companyId },
+    orderBy: { createdAt: "desc" },
+    select: { invoiceNumber: true },
+  });
+  const match = last?.invoiceNumber.match(/(\d+)$/);
+  const next = (match ? Number(match[1]) : company.invoiceStartingNumber - 1) + 1;
+  return generateInvoiceNumber(company.invoicePrefix, next);
 }
 
 export async function getNextInvoiceNumber(): Promise<ActionResult<string>> {
@@ -40,7 +46,30 @@ export async function getInvoices(filters: { status?: InvoiceStatus; from?: Date
     ...(filters.from || filters.to ? { invoiceDate: { ...(filters.from ? { gte: new Date(filters.from) } : {}), ...(filters.to ? { lte: new Date(filters.to) } : {}) } } : {}),
   };
   try {
-    const data = await prisma.invoice.findMany({ where, include: { trip: { include: { vehicle: { select: { id: true, number: true } }, driver: { select: { id: true, name: true } } } } }, orderBy: { invoiceDate: "desc" } });
+    const data = await prisma.invoice.findMany({
+      where,
+      select: {
+        id: true,
+        invoiceNumber: true,
+        invoiceDate: true,
+        status: true,
+        grandTotal: true,
+        paidAmount: true,
+        pendingAmount: true,
+        pdfUrl: true,
+        trip: {
+          select: {
+            tripNumber: true,
+            source: true,
+            destination: true,
+            vehicle: { select: { number: true } },
+            driver: { select: { name: true } },
+          },
+        },
+      },
+      orderBy: { invoiceDate: "desc" },
+      take: 150,
+    });
     return { success: true, data } satisfies ActionResult<typeof data>;
   } catch (error) { return fail(error); }
 }

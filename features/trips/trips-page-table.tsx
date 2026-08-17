@@ -9,9 +9,13 @@ import { TripsTable, type TripTableRow } from "@/features/trips/trips-table";
 export function TripsPageTable({
   data: initialData,
   total: initialTotal,
+  page = 1,
+  hasMore = false,
 }: {
   data: TripTableRow[];
   total: number;
+  page?: number;
+  hasMore?: boolean;
 }) {
   const router = useRouter();
   const [data, setData] = useState(initialData);
@@ -40,7 +44,6 @@ export function TripsPageTable({
     setData((current) => current.filter((item) => item.id !== trip.id));
     setTotal((current) => Math.max(0, current - 1));
     toast.success(`Deleted ${trip.tripNumber}.`);
-    router.refresh();
   }
 
   async function handleBulkDelete(ids: string[]): Promise<boolean> {
@@ -59,7 +62,6 @@ export function TripsPageTable({
         ? "Deleted 1 trip."
         : `Deleted ${deletedCount} trips. ${Math.max(0, total - deletedCount)} remaining.`
     );
-    router.refresh();
     return true;
   }
 
@@ -67,6 +69,8 @@ export function TripsPageTable({
     <TripsTable
       data={data}
       total={total}
+      page={page}
+      hasMore={hasMore}
       onDuplicate={handleDuplicate}
       onDelete={handleDelete}
       onBulkDelete={handleBulkDelete}

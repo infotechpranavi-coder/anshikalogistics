@@ -12,6 +12,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { Copy, Eye, Pencil, Search, Trash2 } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -43,6 +44,8 @@ export interface TripTableRow {
 export interface TripsTableProps {
   data: TripTableRow[];
   total?: number;
+  page?: number;
+  hasMore?: boolean;
   onView?: (trip: TripTableRow) => void;
   onEdit?: (trip: TripTableRow) => void;
   onDuplicate: (trip: TripTableRow) => Promise<void>;
@@ -58,6 +61,8 @@ const formatQty = (value: number) => {
 export function TripsTable({
   data,
   total,
+  page = 1,
+  hasMore = false,
   onView,
   onEdit,
   onDuplicate,
@@ -370,14 +375,25 @@ export function TripsTable({
       <div className="flex items-center justify-between text-sm">
         <p className="text-slate-500">
           Page {table.getState().pagination.pageIndex + 1} of {Math.max(1, table.getPageCount())}
+          {page > 1 || hasMore ? ` · batch ${page}` : ""}
         </p>
         <div className="flex gap-2">
+          {page > 1 ? (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/trips?page=${page - 1}`}>Newer</Link>
+            </Button>
+          ) : null}
           <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
             Previous
           </Button>
           <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
             Next
           </Button>
+          {hasMore ? (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/trips?page=${page + 1}`}>Older</Link>
+            </Button>
+          ) : null}
         </div>
       </div>
     </div>

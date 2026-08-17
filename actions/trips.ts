@@ -28,8 +28,8 @@ function validationFailure(error: ReturnType<typeof tripSchema.safeParse>): Acti
 
 function errorResult(error: unknown): ActionResult<never> {
   console.error("Trip action failed:", error);
-  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
-    return { success: false, error: "Trip not found." };
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+    return { success: false, error: "That trip number is already in use. Please save again." };
   }
   if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2028") {
     return { success: false, error: "Delete took too long. Please try again with fewer trips selected." };
@@ -103,6 +103,53 @@ function computedTripData(data: TripInput) {
   };
 }
 
+function nextPaddedCode(prefix: string, lastValue?: string | null) {
+  const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = lastValue?.match(new RegExp(`^${escaped}-(\\d+)$`, "i"));
+  return `${prefix}-${String((match ? Number(match[1]) : 0) + 1).padStart(6, "0")}`;
+}
+
+async function nextTripNumber(companyId: string) {
+  const last = await prisma.trip.findFirst({
+    where: { companyId },
+    orderBy: { createdAt: "desc" },
+    select: { tripNumber: true },
+  });
+  return nextPaddedCode("TRP", last?.tripNumber);
+}
+
+async function nextInvoiceCode(companyId: string) {
+  const last = await prisma.invoice.findFirst({
+    where: { companyId },
+    orderBy: { createdAt: "desc" },
+    select: { invoiceNumber: true },
+  });
+  return nextPaddedCode("INV", last?.invoiceNumber);
+}
+
+function expenseRows(input: {
+  extraExpenses: { title: string; amount: number }[];
+  tripId: string;
+  vehicleId: string;
+  driverId?: string | null;
+  tripDate: Date;
+  companyId: string;
+  createdById: string;
+}) {
+  return input.extraExpenses.map((item) => ({
+    title: item.title.trim(),
+    amount: item.amount,
+    type: "TRIP" as const,
+    category: "OTHER" as const,
+    date: input.tripDate,
+    tripId: input.tripId,
+    vehicleId: input.vehicleId,
+    driverId: input.driverId ?? null,
+    companyId: input.companyId,
+    createdById: input.createdById,
+  }));
+}
+
 async function saveTripExpenses(
   tx: Prisma.TransactionClient,
   input: {
@@ -116,22 +163,8 @@ async function saveTripExpenses(
   }
 ) {
   await tx.expense.deleteMany({ where: { tripId: input.tripId, companyId: input.companyId } });
-  for (const item of input.extraExpenses) {
-    await tx.expense.create({
-      data: {
-        title: item.title.trim(),
-        amount: item.amount,
-        type: "TRIP",
-        category: "OTHER",
-        date: input.tripDate,
-        tripId: input.tripId,
-        vehicleId: input.vehicleId,
-        driverId: input.driverId ?? null,
-        companyId: input.companyId,
-        createdById: input.createdById,
-      },
-    });
-  }
+  const rows = expenseRows(input);
+  if (rows.length) await tx.expense.createMany({ data: rows });
 }
 
 export async function createTrip(input: TripInput): Promise<ActionResult<{ id: string; tripNumber: string }>> {
@@ -141,46 +174,45 @@ export async function createTrip(input: TripInput): Promise<ActionResult<{ id: s
 
   try {
     const { extraExpenses, ...tripData } = computedTripData(parsed.data);
-    const created = await prisma.$transaction(async (tx) => {
-      const tripCount = await tx.trip.count({ where: { companyId: user.companyId } });
-      const tripNumber = `TRP-${String(tripCount + 1).padStart(6, "0")}`;
-      const trip = await tx.trip.create({
-        data: {
-          ...tripData,
-          tripNumber,
-          companyId: user.companyId,
-          createdById: user.id,
-        },
-      });
-      await saveTripExpenses(tx, {
-        extraExpenses,
-        tripId: trip.id,
-        vehicleId: tripData.vehicleId,
-        driverId: tripData.driverId,
-        tripDate: tripData.tripDate,
+    const tripNumber = await nextTripNumber(user.companyId);
+    const created = await prisma.trip.create({
+      data: {
+        ...tripData,
+        tripNumber,
         companyId: user.companyId,
         createdById: user.id,
-      });
-
-      if (tripData.status === "COMPLETED") {
-        const invoiceCount = await tx.invoice.count({ where: { companyId: user.companyId } });
-        await tx.invoice.create({
-          data: {
-            invoiceNumber: `INV-${String(invoiceCount + 1).padStart(6, "0")}`,
-            status: "GENERATED",
-            subtotal: tripData.grandTotal,
-            grandTotal: tripData.grandTotal,
-            paidAmount: tripData.paidAmount,
-            pendingAmount: tripData.pendingAmount,
-            tripId: trip.id,
-            companyId: user.companyId,
-          },
-        });
-      }
-      return trip;
+      },
     });
 
-    await createAuditLog({
+    const extraRows = expenseRows({
+      extraExpenses,
+      tripId: created.id,
+      vehicleId: tripData.vehicleId,
+      driverId: tripData.driverId,
+      tripDate: tripData.tripDate,
+      companyId: user.companyId,
+      createdById: user.id,
+    });
+    if (extraRows.length) {
+      await prisma.expense.createMany({ data: extraRows });
+    }
+
+    if (tripData.status === "COMPLETED") {
+      await prisma.invoice.create({
+        data: {
+          invoiceNumber: await nextInvoiceCode(user.companyId),
+          status: "GENERATED",
+          subtotal: tripData.grandTotal,
+          grandTotal: tripData.grandTotal,
+          paidAmount: tripData.paidAmount,
+          pendingAmount: tripData.pendingAmount,
+          tripId: created.id,
+          companyId: user.companyId,
+        },
+      });
+    }
+
+    void createAuditLog({
       action: "CREATE",
       entity: "Trip",
       entityId: created.id,
@@ -236,10 +268,14 @@ export async function updateTrip(
             },
           });
         } else {
-          const invoiceCount = await tx.invoice.count({ where: { companyId: user.companyId } });
+          const lastInvoice = await tx.invoice.findFirst({
+            where: { companyId: user.companyId },
+            orderBy: { createdAt: "desc" },
+            select: { invoiceNumber: true },
+          });
           await tx.invoice.create({
             data: {
-              invoiceNumber: `INV-${String(invoiceCount + 1).padStart(6, "0")}`,
+              invoiceNumber: nextPaddedCode("INV", lastInvoice?.invoiceNumber),
               status: "GENERATED",
               subtotal: tripData.grandTotal,
               grandTotal: tripData.grandTotal,
@@ -344,8 +380,7 @@ export async function duplicateTrip(id: string): Promise<ActionResult<{ id: stri
     const source = await prisma.trip.findFirst({ where: { id, companyId: user.companyId } });
     if (!source) return { success: false, error: "Trip not found." };
 
-    const tripCount = await prisma.trip.count({ where: { companyId: user.companyId } });
-    const tripNumber = `TRP-${String(tripCount + 1).padStart(6, "0")}`;
+    const tripNumber = await nextTripNumber(user.companyId);
     const duplicate = await prisma.trip.create({
       data: {
         tripNumber,
@@ -407,7 +442,7 @@ export async function getTrips(
 ): Promise<ActionResult<PaginatedResult<TripListItem>>> {
   const user = await requireCompany();
   const page = Math.max(1, options.page ?? 1);
-  const pageSize = Math.min(5000, Math.max(1, options.pageSize ?? 10));
+  const pageSize = Math.min(100, Math.max(1, options.pageSize ?? 50));
   const search = options.search?.trim();
   const where: Prisma.TripWhereInput = {
     companyId: user.companyId,
@@ -427,24 +462,24 @@ export async function getTrips(
   };
 
   try {
-    const [items, total] = await prisma.$transaction([
-      prisma.trip.findMany({
-        where,
-        select: tripListSelect,
-        orderBy: [{ tripDate: "desc" }, { createdAt: "desc" }],
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
-      prisma.trip.count({ where }),
-    ]);
+    const rows = await prisma.trip.findMany({
+      where,
+      select: tripListSelect,
+      orderBy: [{ tripDate: "desc" }, { createdAt: "desc" }],
+      skip: (page - 1) * pageSize,
+      take: pageSize + 1,
+    });
+    const hasMore = rows.length > pageSize;
+    const items = hasMore ? rows.slice(0, pageSize) : rows;
+    const loadedThrough = (page - 1) * pageSize + items.length;
     return {
       success: true,
       data: {
         data: items,
-        total,
+        total: hasMore ? loadedThrough + 1 : loadedThrough,
         page,
         pageSize,
-        totalPages: Math.ceil(total / pageSize),
+        totalPages: hasMore ? page + 1 : page,
       },
     };
   } catch (error) {
@@ -475,17 +510,52 @@ const tripListSelect = {
   driver: { select: { id: true, name: true, phone: true } },
 } satisfies Prisma.TripSelect;
 
+const tripDetailSelect = {
+  id: true,
+  tripNumber: true,
+  tripDate: true,
+  tripTime: true,
+  source: true,
+  destination: true,
+  loadingKm: true,
+  unloadingKm: true,
+  isLoaded: true,
+  isEmpty: true,
+  remarks: true,
+  dieselRate: true,
+  mileage: true,
+  fuelFilled: true,
+  fuelRequired: true,
+  fuelCost: true,
+  toll: true,
+  parking: true,
+  food: true,
+  repair: true,
+  policeFine: true,
+  advance: true,
+  miscExpense: true,
+  paidAmount: true,
+  paymentMethod: true,
+  voucherNumber: true,
+  narration: true,
+  status: true,
+  vehicleId: true,
+  driverId: true,
+  driverPhone: true,
+  vehicle: { select: { number: true, type: true, owner: true, fuelType: true } },
+  driver: { select: { name: true, phone: true } },
+  invoice: { select: { invoiceNumber: true } },
+} satisfies Prisma.TripSelect;
+
 type TripListItem = Prisma.TripGetPayload<{ select: typeof tripListSelect }>;
-type TripDetail = Prisma.TripGetPayload<{
-  include: { vehicle: true; driver: true; invoice: true };
-}>;
+type TripDetail = Prisma.TripGetPayload<{ select: typeof tripDetailSelect }>;
 
 export async function getTripById(id: string): Promise<ActionResult<TripDetail>> {
   const user = await requireCompany();
   try {
     const trip = await prisma.trip.findFirst({
       where: { id, companyId: user.companyId },
-      include: { vehicle: true, driver: true, invoice: true },
+      select: tripDetailSelect,
     });
     if (!trip) return { success: false, error: "Trip not found." };
     return { success: true, data: trip };
@@ -601,7 +671,12 @@ export async function importTripsFromExcel(
       )
     );
 
-    let tripCount = await prisma.trip.count({ where: { companyId: user.companyId } });
+    const lastTrip = await prisma.trip.findFirst({
+      where: { companyId: user.companyId },
+      orderBy: { createdAt: "desc" },
+      select: { tripNumber: true },
+    });
+    let tripSeq = Number(lastTrip?.tripNumber.match(/(\d+)$/)?.[1] ?? 0);
     let imported = 0;
     let skipped = parsed.skipped;
     const errors = [...parsed.errors];
@@ -631,8 +706,8 @@ export async function importTripsFromExcel(
       const driverId = row.driverName
         ? driverByName.get(row.driverName.trim().toLowerCase()) ?? null
         : null;
-      tripCount += 1;
-      const tripNumber = `TRP-${String(tripCount).padStart(6, "0")}`;
+      tripSeq += 1;
+      const tripNumber = `TRP-${String(tripSeq).padStart(6, "0")}`;
       const expenseTotal = row.voucherAmount;
       const fuelCost = row.fuelCost;
       const grandTotal = row.grandTotal || fuelCost + expenseTotal;

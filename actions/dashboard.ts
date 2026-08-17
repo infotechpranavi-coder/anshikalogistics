@@ -87,27 +87,46 @@ export async function getDashboardStats(companyId: string): Promise<DashboardDat
   const rangeStart = startOfMonth(subMonths(now, 5));
   const rangeEnd = endOfMonth(now);
 
+  const monthRanges = Array.from({ length: 6 }, (_, index) => {
+    const date = subMonths(now, 5 - index);
+    return {
+      key: format(date, "yyyy-MM"),
+      name: format(date, "MMM"),
+      start: startOfMonth(date),
+      end: endOfMonth(date),
+    };
+  });
+
   const [
-    trips,
-    expenses,
+    todayTrips,
+    todayExpenses,
+    rangeTripTotals,
+    expenseGroups,
+    vehicleUsageRows,
     vehicles,
     completedTrips,
     pendingInvoiceTotals,
     recentTrips,
     recentInvoices,
     recentExpenses,
+    ...monthlyTripTotals
   ] = await Promise.all([
-    prisma.trip.findMany({
+    prisma.trip.aggregate({
+      where: { companyId, tripDate: { gte: todayStart, lte: todayEnd } },
+      _count: true,
+      _sum: { expenseTotal: true, fuelCost: true },
+    }),
+    prisma.expense.aggregate({
+      where: { companyId, date: { gte: todayStart, lte: todayEnd } },
+      _sum: { amount: true },
+    }),
+    prisma.trip.aggregate({
       where: { companyId, tripDate: { gte: rangeStart, lte: rangeEnd } },
-      select: {
-        tripDate: true,
-        vehicleId: true,
+      _sum: {
+        distance: true,
         fuelFilled: true,
         fuelRequired: true,
         fuelCost: true,
-        expenseTotal: true,
-        grandTotal: true,
-        distance: true,
         toll: true,
         parking: true,
         food: true,
@@ -117,9 +136,15 @@ export async function getDashboardStats(companyId: string): Promise<DashboardDat
         miscExpense: true,
       },
     }),
-    prisma.expense.findMany({
+    prisma.expense.groupBy({
+      by: ["category"],
       where: { companyId, date: { gte: rangeStart, lte: rangeEnd } },
-      select: { amount: true, category: true, date: true },
+      _sum: { amount: true },
+    }),
+    prisma.trip.groupBy({
+      by: ["vehicleId"],
+      where: { companyId, tripDate: { gte: rangeStart, lte: rangeEnd } },
+      _count: { vehicleId: true },
     }),
     prisma.vehicle.findMany({
       where: { companyId },
@@ -173,66 +198,47 @@ export async function getDashboardStats(companyId: string): Promise<DashboardDat
         vehicle: { select: { number: true } },
       },
     }),
+    ...monthRanges.map((month) =>
+      prisma.trip.aggregate({
+        where: { companyId, tripDate: { gte: month.start, lte: month.end } },
+        _count: true,
+        _sum: { grandTotal: true, fuelFilled: true, fuelRequired: true, expenseTotal: true },
+      })
+    ),
   ]);
 
-  const monthBuckets = Array.from({ length: 6 }, (_, index) => {
-    const date = subMonths(now, 5 - index);
+  const monthBuckets = monthRanges.map((month, index) => {
+    const totals = monthlyTripTotals[index];
     return {
-      key: format(date, "yyyy-MM"),
-      name: format(date, "MMM"),
-      expenses: 0,
-      fuel: 0,
-      trips: 0,
+      name: month.name,
+      expenses: totals?._sum.grandTotal ?? 0,
+      fuel: (totals?._sum.fuelFilled ?? 0) || (totals?._sum.fuelRequired ?? 0),
+      trips: totals?._count ?? 0,
     };
   });
-  const monthsByKey = new Map(monthBuckets.map((month) => [month.key, month]));
-  const usage = new Map<string, number>();
+  const usage = new Map(vehicleUsageRows.map((row) => [row.vehicleId, row._count.vehicleId]));
   const categories = new Map<string, number>();
-
-  for (const trip of trips) {
-    const month = monthsByKey.get(format(trip.tripDate, "yyyy-MM"));
-    if (month) {
-      month.expenses += trip.grandTotal;
-      month.fuel += trip.fuelFilled || trip.fuelRequired;
-      month.trips += 1;
-    }
-    usage.set(trip.vehicleId, (usage.get(trip.vehicleId) ?? 0) + 1);
-    addCategory(categories, "FUEL", trip.fuelCost);
-    addCategory(categories, "TOLL", trip.toll);
-    addCategory(categories, "PARKING", trip.parking);
-    addCategory(categories, "FOOD", trip.food);
-    addCategory(categories, "REPAIR", trip.repair);
-    addCategory(categories, "POLICE_FINE", trip.policeFine);
-    addCategory(categories, "ADVANCE", trip.advance);
-    addCategory(categories, "MISC", trip.miscExpense);
+  addCategory(categories, "FUEL", rangeTripTotals._sum.fuelCost ?? 0);
+  addCategory(categories, "TOLL", rangeTripTotals._sum.toll ?? 0);
+  addCategory(categories, "PARKING", rangeTripTotals._sum.parking ?? 0);
+  addCategory(categories, "FOOD", rangeTripTotals._sum.food ?? 0);
+  addCategory(categories, "REPAIR", rangeTripTotals._sum.repair ?? 0);
+  addCategory(categories, "POLICE_FINE", rangeTripTotals._sum.policeFine ?? 0);
+  addCategory(categories, "ADVANCE", rangeTripTotals._sum.advance ?? 0);
+  addCategory(categories, "MISC", rangeTripTotals._sum.miscExpense ?? 0);
+  for (const group of expenseGroups) {
+    addCategory(categories, group.category, group._sum.amount ?? 0);
   }
 
-  for (const expense of expenses) {
-    const month = monthsByKey.get(format(expense.date, "yyyy-MM"));
-    if (month) month.expenses += expense.amount;
-    addCategory(categories, expense.category, expense.amount);
-  }
-
-  const todaysTrips = trips.filter(
-    (trip) => trip.tripDate >= todayStart && trip.tripDate <= todayEnd
-  );
-  const todaysExpenses = expenses.filter(
-    (expense) => expense.date >= todayStart && expense.date <= todayEnd
-  );
-  const currentMonth = monthsByKey.get(format(now, "yyyy-MM"));
-  const totalDistance = trips.reduce((total, trip) => total + trip.distance, 0);
-  const totalFuel = trips.reduce(
-    (total, trip) => total + (trip.fuelFilled || trip.fuelRequired),
-    0
-  );
   const mileageVehicles = vehicles.filter((vehicle) => vehicle.mileage > 0);
+  const currentMonth = monthBuckets[monthBuckets.length - 1];
+  const totalFuel =
+    (rangeTripTotals._sum.fuelFilled ?? 0) || (rangeTripTotals._sum.fuelRequired ?? 0);
 
   const stats: DashboardStats = {
-    todaysTrips: todaysTrips.length,
-    todaysExpense:
-      todaysTrips.reduce((total, trip) => total + trip.expenseTotal, 0) +
-      todaysExpenses.reduce((total, expense) => total + expense.amount, 0),
-    todaysDieselCost: todaysTrips.reduce((total, trip) => total + trip.fuelCost, 0),
+    todaysTrips: todayTrips._count,
+    todaysExpense: (todayTrips._sum.expenseTotal ?? 0) + (todayExpenses._sum.amount ?? 0),
+    todaysDieselCost: todayTrips._sum.fuelCost ?? 0,
     monthlyExpense: currentMonth?.expenses ?? 0,
     runningVehicles: vehicles.filter((vehicle) => vehicle.status === "ACTIVE").length,
     completedTrips,
@@ -242,7 +248,7 @@ export async function getDashboardStats(companyId: string): Promise<DashboardDat
         mileageVehicles.length
       : 0,
     fuelConsumption: totalFuel,
-    distanceTravelled: totalDistance,
+    distanceTravelled: rangeTripTotals._sum.distance ?? 0,
   };
 
   return {

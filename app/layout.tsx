@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
-import { QueryProvider } from "@/components/providers/query-provider";
 import { SessionProvider } from "@/components/providers/session-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AppToaster } from "@/components/providers/toaster";
@@ -46,10 +45,8 @@ export default async function RootLayout({
           enableSystem={false}
         >
           <SessionProvider session={session}>
-            <QueryProvider>
-              {children}
-              <AppToaster />
-            </QueryProvider>
+            {children}
+            <AppToaster />
           </SessionProvider>
         </ThemeProvider>
       </body>

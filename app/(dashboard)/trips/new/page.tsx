@@ -4,12 +4,11 @@ import { PageHeader } from "@/components/shared/page-header";
 import { TripFormPage } from "@/features/trips/trip-form-page";
 import { prisma } from "@/lib/prisma";
 import { requireCompany } from "@/lib/session";
-import { generateInvoiceNumber } from "@/lib/utils";
 import type { TripInput } from "@/schemas";
 
 export default async function NewTripPage() {
   const user = await requireCompany();
-  const [vehicles, drivers, company, invoiceCount] = await Promise.all([
+  const [vehicles, company] = await Promise.all([
     prisma.vehicle.findMany({
       where: { companyId: user.companyId, status: "ACTIVE" },
       orderBy: { number: "asc" },
@@ -21,11 +20,6 @@ export default async function NewTripPage() {
         fuelType: true,
         mileage: true,
       },
-    }),
-    prisma.driver.findMany({
-      where: { companyId: user.companyId, isActive: true },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, phone: true },
     }),
     prisma.company.findUniqueOrThrow({
       where: { id: user.companyId },
@@ -39,10 +33,8 @@ export default async function NewTripPage() {
         signature: true,
         upiId: true,
         invoicePrefix: true,
-        invoiceStartingNumber: true,
       },
     }),
-    prisma.invoice.count({ where: { companyId: user.companyId } }),
   ]);
 
   async function saveTrip(data: TripInput) {
@@ -52,13 +44,8 @@ export default async function NewTripPage() {
     if (!result.success || !result.data) {
       throw new Error(result.error ?? "Unable to save the trip.");
     }
-    redirect(`/trips/${result.data.id}`);
+    redirect("/trips");
   }
-
-  const nextInvoiceNumber = generateInvoiceNumber(
-    company.invoicePrefix,
-    company.invoiceStartingNumber + invoiceCount
-  );
 
   return (
     <div className="space-y-6">
@@ -68,9 +55,8 @@ export default async function NewTripPage() {
       />
       <TripFormPage
         vehicles={vehicles}
-        drivers={drivers}
         company={company}
-        nextInvoiceNumber={nextInvoiceNumber}
+        nextInvoiceNumber={`${company.invoicePrefix}-DRAFT`}
         onSubmit={saveTrip}
         onSaveDraft={saveTrip}
       />

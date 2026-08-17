@@ -4,7 +4,6 @@ import { PageHeader } from "@/components/shared/page-header";
 import { TripFormPage } from "@/features/trips/trip-form-page";
 import { prisma } from "@/lib/prisma";
 import { requireCompany } from "@/lib/session";
-import { generateInvoiceNumber } from "@/lib/utils";
 import type { TripInput } from "@/schemas";
 
 export default async function EditTripPage({
@@ -14,7 +13,7 @@ export default async function EditTripPage({
 }) {
   const { id } = await params;
   const user = await requireCompany();
-  const [tripResult, vehicles, drivers, company, invoiceCount] = await Promise.all([
+  const [tripResult, vehicles, company] = await Promise.all([
     getTripById(id),
     prisma.vehicle.findMany({
       where: { companyId: user.companyId },
@@ -28,11 +27,6 @@ export default async function EditTripPage({
         mileage: true,
       },
     }),
-    prisma.driver.findMany({
-      where: { companyId: user.companyId },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, phone: true },
-    }),
     prisma.company.findUniqueOrThrow({
       where: { id: user.companyId },
       select: {
@@ -45,10 +39,8 @@ export default async function EditTripPage({
         signature: true,
         upiId: true,
         invoicePrefix: true,
-        invoiceStartingNumber: true,
       },
     }),
-    prisma.invoice.count({ where: { companyId: user.companyId } }),
   ]);
 
   if (!tripResult.success || !tripResult.data) notFound();
@@ -64,13 +56,6 @@ export default async function EditTripPage({
     redirect("/trips");
   }
 
-  const nextInvoiceNumber =
-    trip.invoice?.invoiceNumber ??
-    generateInvoiceNumber(
-      company.invoicePrefix,
-      company.invoiceStartingNumber + invoiceCount
-    );
-
   return (
     <div className="space-y-6">
       <PageHeader
@@ -80,9 +65,8 @@ export default async function EditTripPage({
       <TripFormPage
         tripId={trip.id}
         vehicles={vehicles}
-        drivers={drivers}
         company={company}
-        nextInvoiceNumber={nextInvoiceNumber}
+        nextInvoiceNumber={trip.invoice?.invoiceNumber ?? `${company.invoicePrefix}-DRAFT`}
         defaultValues={{
           vehicleId: trip.vehicleId,
           vehicleNumber: trip.vehicle.number,
