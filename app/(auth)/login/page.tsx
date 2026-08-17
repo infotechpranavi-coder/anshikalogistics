@@ -142,7 +142,7 @@ export default function LoginPage() {
         </form>
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
-          New to FleetFuel?{" "}
+          New to Anshika Logistics?{" "}
           <Link
             href="/register"
             className="font-semibold text-teal-700 hover:underline"

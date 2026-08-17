@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { APP_LOGO } from "@/lib/brand";
 import { buildUpiQrPayload, generateQrDataUrl } from "@/lib/qrcode";
 import type { LiveInvoiceData } from "@/types";
 
@@ -49,19 +50,13 @@ export function LiveInvoicePreview({ data }: LiveInvoicePreviewProps) {
       <div className="flex h-full flex-col p-6 sm:p-8">
         <header className="flex items-start justify-between gap-6 border-b-2 border-slate-800 pb-5">
           <div className="flex items-center gap-4">
-            {data.companyLogo ? (
-              // Company logos may be hosted on a user-configured domain.
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={data.companyLogo}
-                alt={`${data.companyName} logo`}
-                className="h-14 w-14 rounded-lg object-contain"
-              />
-            ) : (
-              <div className="grid h-14 w-14 place-items-center rounded-lg bg-teal-700 text-xl font-bold text-white">
-                {data.companyName.slice(0, 2).toUpperCase()}
-              </div>
-            )}
+            {/* Local brand mark from /public or company settings */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={data.companyLogo || APP_LOGO}
+              alt={`${data.companyName} logo`}
+              className="h-16 w-auto max-w-28 rounded-lg object-contain"
+            />
             <div>
               <h1 className="text-xl font-bold tracking-tight">{data.companyName}</h1>
               {data.companyAddress && (

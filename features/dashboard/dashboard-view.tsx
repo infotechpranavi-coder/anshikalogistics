@@ -70,8 +70,8 @@ export function DashboardView({
   return (
     <div className="space-y-7">
       <PageHeader
-        title="Fleet overview"
-        description="Monitor daily operations, costs, fuel usage, and collections."
+        title="Anshika Logistics"
+        description="Monitor trips, diesel costs, vehicles, and collections."
       >
         <Button asChild>
           <Link href="/trips/new">

@@ -9,6 +9,7 @@ import {
   View,
 } from "@react-pdf/renderer";
 import type { LiveInvoiceData } from "@/types";
+import { resolveLogoUrl } from "@/lib/brand";
 
 const styles = StyleSheet.create({
   page: { padding: 34, color: "#0f172a", fontFamily: "Helvetica", fontSize: 9 },
@@ -20,7 +21,7 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
   },
   brand: { flexDirection: "row", gap: 10, width: "68%" },
-  logo: { width: 42, height: 42, objectFit: "contain" },
+  logo: { width: 72, height: 72, objectFit: "contain" },
   companyName: { fontSize: 16, fontFamily: "Helvetica-Bold", marginBottom: 4 },
   muted: { color: "#64748b", lineHeight: 1.4 },
   invoice: { textAlign: "right" },
@@ -113,7 +114,7 @@ export function InvoicePdfDocument({ data }: InvoicePdfProps) {
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
           <View style={styles.brand}>
-            {data.companyLogo ? <PdfImage src={data.companyLogo} style={styles.logo} /> : null}
+            <PdfImage src={resolveLogoUrl(data.companyLogo)} style={styles.logo} />
             <View>
               <Text style={styles.companyName}>{data.companyName}</Text>
               {data.companyAddress ? <Text style={styles.muted}>{data.companyAddress}</Text> : null}

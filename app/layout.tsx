@@ -5,6 +5,7 @@ import { SessionProvider } from "@/components/providers/session-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AppToaster } from "@/components/providers/toaster";
 import { auth } from "@/lib/auth";
+import { APP_DESCRIPTION, APP_NAME } from "@/lib/brand";
 
 import "./globals.css";
 
@@ -20,10 +21,10 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "FleetFuel",
-    template: "%s | FleetFuel",
+    default: APP_NAME,
+    template: `%s | ${APP_NAME}`,
   },
-  description: "Fleet fuel, trip, vehicle, and expense management.",
+  description: APP_DESCRIPTION,
 };
 
 export default async function RootLayout({

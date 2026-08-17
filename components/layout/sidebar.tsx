@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 
+import { BrandLogo } from "@/components/shared/brand-logo";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -48,18 +49,13 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="flex h-16 items-center justify-between border-b border-slate-200 px-5">
+        <div className="flex h-20 items-center justify-between border-b border-slate-200 px-4">
           <Link
             href="/dashboard"
-            className="flex items-center gap-3"
+            className="flex min-w-0 items-center"
             onClick={onClose}
           >
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-600 text-white shadow-md shadow-teal-600/20">
-              <Gauge className="h-5 w-5" aria-hidden="true" />
-            </span>
-            <span className="text-lg font-bold tracking-tight text-slate-900">
-              FleetFuel
-            </span>
+            <BrandLogo imgClassName="h-14 max-w-[11.5rem]" />
           </Link>
           <Button
             type="button"

@@ -1,4 +1,4 @@
-# FleetFuel — Fleet Fuel & Trip Management System
+# Anshika Logistics — Trip & Diesel Expense Management
 
 Enterprise SaaS for managing fleet trips, fuel, expenses, and invoices — replacing spreadsheet workflows with live calculations and instant invoice previews.
 

@@ -41,7 +41,7 @@ const fields = [
     label: "Company name",
     type: "text",
     autoComplete: "organization",
-    placeholder: "Acme Logistics",
+    placeholder: "Anshika Logistics",
     icon: Building2,
   },
   {

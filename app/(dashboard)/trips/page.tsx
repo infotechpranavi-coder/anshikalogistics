@@ -1,26 +1,11 @@
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Plus, Route } from "lucide-react";
 import { getTrips } from "@/actions/trips";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
+import { ExcelImportDialog } from "@/features/trips/excel-import-button";
 import { TripsPageTable } from "@/features/trips/trips-page-table";
-
-const ExcelImportDialog = dynamic(
-  () =>
-    import("@/features/trips/excel-import-dialog").then(
-      (mod) => mod.ExcelImportDialog
-    ),
-  {
-    ssr: false,
-    loading: () => (
-      <Button type="button" variant="outline" disabled>
-        Import Excel
-      </Button>
-    ),
-  }
-);
 
 export default async function TripsPage({
   searchParams,

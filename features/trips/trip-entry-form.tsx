@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { tripSchema, type TripInput } from "@/schemas";
+import { APP_LOGO } from "@/lib/brand";
 import type { LiveInvoiceData, TripFormValues } from "@/types";
 
 type TripFields = Omit<TripInput, "tripDate"> & {
@@ -163,7 +164,7 @@ export function TripEntryForm({
       invoiceNumber: nextInvoiceNumber,
       tripDate: values.tripDate || new Date(),
       companyName: company.name,
-      companyLogo: company.logo,
+      companyLogo: company.logo || APP_LOGO,
       companyAddress: company.address,
       companyPhone: company.phone,
       companyEmail: company.email,

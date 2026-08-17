@@ -5,12 +5,22 @@ const prisma = new PrismaClient();
 
 async function main() {
   let company = await prisma.company.findFirst({
-    where: { name: "Fleet Fuel Demo" },
+    where: { OR: [{ name: "Anshika Logistics" }, { name: "Fleet Fuel Demo" }] },
   });
+
+  if (company) {
+    company = await prisma.company.update({
+      where: { id: company.id },
+      data: {
+        name: "Anshika Logistics",
+        logo: "/anishka-logistics-logo.jpeg",
+      },
+    });
+  }
 
   company ??= await prisma.company.create({
     data: {
-      name: "Fleet Fuel Demo",
+      name: "Anshika Logistics",
       address: "Transport Nagar",
       city: "New Delhi",
       state: "Delhi",
@@ -20,6 +30,7 @@ async function main() {
       invoicePrefix: "INV",
       invoiceStartingNumber: 1,
       upiId: "fleetfuel@upi",
+      logo: "/anishka-logistics-logo.jpeg",
     },
   });
 
@@ -85,7 +96,7 @@ async function main() {
       fuelType: "DIESEL" as const,
       mileage: 5.5,
       capacity: 25,
-      owner: "Fleet Fuel Demo",
+      owner: "Anshika Logistics",
     },
     {
       number: "HR-55-CD-5678",
@@ -96,7 +107,7 @@ async function main() {
       fuelType: "DIESEL" as const,
       mileage: 4.8,
       capacity: 30,
-      owner: "Fleet Fuel Demo",
+      owner: "Anshika Logistics",
     },
   ];
 

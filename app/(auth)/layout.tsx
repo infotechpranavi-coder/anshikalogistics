@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Gauge } from "lucide-react";
+import { BrandLogo } from "@/components/shared/brand-logo";
 
 export default function AuthLayout({
   children,
@@ -15,18 +15,12 @@ export default function AuthLayout({
         className="absolute -right-32 bottom-1/4 h-80 w-80 rounded-full bg-slate-200/50 blur-3xl"
       />
       <div className="relative z-10 w-full max-w-md">
-        <Link
-          href="/"
-          className="mb-7 flex items-center justify-center gap-3 text-slate-900"
-        >
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-600 text-white shadow-lg shadow-teal-600/20">
-            <Gauge className="h-5 w-5" aria-hidden="true" />
-          </span>
-          <span className="text-xl font-bold tracking-tight">FleetFuel</span>
+        <Link href="/" className="mb-7 flex items-center justify-center">
+          <BrandLogo imgClassName="h-24 max-w-[16rem]" />
         </Link>
         {children}
         <p className="mt-6 text-center text-xs text-slate-500">
-          Secure fleet operations management
+          Trip, vehicle, and diesel expense management
         </p>
       </div>
     </main>
