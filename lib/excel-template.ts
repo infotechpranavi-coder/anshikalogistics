@@ -1,0 +1,17 @@
+export const DIESEL_EXCEL_HEADERS = [
+  "Date",
+  "From",
+  "To",
+  "Loading KM",
+  "Unloading KM",
+  "Loaded  empty",
+  "KM",
+  "Lt",
+  "Paid Lt",
+  "Pending Lt",
+  "Entry",
+  "Desil Amt",
+  "Voucher",
+  "Final Amount",
+  "Narration",
+] as const;

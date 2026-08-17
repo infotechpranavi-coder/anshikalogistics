@@ -132,6 +132,7 @@ export interface LiveInvoiceData {
   voucherNumber?: string;
   narration?: string;
   remarks?: string;
+  extraExpenses?: { title: string; amount: number }[];
   signature?: string | null;
   upiId?: string | null;
 }

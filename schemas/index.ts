@@ -21,7 +21,7 @@ export const registerSchema = z
 
 export const vehicleSchema = z.object({
   number: z.string().min(1, "Vehicle number is required"),
-  type: z.string().min(1, "Vehicle type is required"),
+  type: z.string().min(1).default("Truck"),
   make: z.string().optional(),
   model: z.string().optional(),
   year: z.coerce.number().optional().nullable(),
@@ -60,16 +60,20 @@ export const tripSchema = z.object({
   driverPhone: z.string().optional(),
   tripDate: z.coerce.date(),
   tripTime: z.string().optional(),
-  source: z.string().min(1, "Source is required"),
-  destination: z.string().min(1, "Destination is required"),
+  source: z.string().min(1, "From is required"),
+  destination: z.string().min(1, "To is required"),
   loadingKm: z.coerce.number().min(0).default(0),
   unloadingKm: z.coerce.number().min(0).default(0),
+  distance: z.coerce.number().min(0).optional(),
   isLoaded: z.boolean().default(true),
   isEmpty: z.boolean().default(false),
   remarks: z.string().optional(),
   dieselRate: z.coerce.number().min(0).default(0),
   mileage: z.coerce.number().min(0).default(0),
   fuelFilled: z.coerce.number().min(0).default(0),
+  fuelRequired: z.coerce.number().min(0).optional(),
+  fuelCost: z.coerce.number().min(0).optional(),
+  grandTotal: z.coerce.number().min(0).optional(),
   toll: z.coerce.number().min(0).default(0),
   parking: z.coerce.number().min(0).default(0),
   food: z.coerce.number().min(0).default(0),
@@ -82,6 +86,15 @@ export const tripSchema = z.object({
   paidAmount: z.coerce.number().min(0).default(0),
   paymentMethod: z.enum(["CASH", "UPI", "BANK", "CHEQUE"]).optional().nullable(),
   status: z.enum(["DRAFT", "PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED"]).default("PENDING"),
+  extraExpenses: z
+    .array(
+      z.object({
+        title: z.string().trim().default(""),
+        amount: z.coerce.number().min(0).default(0),
+      })
+    )
+    .optional()
+    .default([]),
 });
 
 export const expenseSchema = z.object({

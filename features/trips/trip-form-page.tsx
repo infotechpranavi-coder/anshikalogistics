@@ -5,10 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { LiveInvoiceData } from "@/types";
 import { LiveInvoicePreview } from "./live-invoice-preview";
-import {
-  TripEntryForm,
-  type TripEntryFormProps,
-} from "./trip-entry-form";
+import { TripEntryForm, type TripEntryFormProps } from "./trip-entry-form";
 
 export type TripFormPageProps = Omit<TripEntryFormProps, "onChangeLiveData">;
 

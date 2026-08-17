@@ -5,22 +5,11 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { buildUpiQrPayload, generateQrDataUrl } from "@/lib/qrcode";
 import type { LiveInvoiceData } from "@/types";
 
-const expenseLabels: Array<[keyof LiveInvoiceData, string]> = [
-  ["toll", "Toll"],
-  ["parking", "Parking"],
-  ["food", "Food"],
-  ["repair", "Repair"],
-  ["policeFine", "Police fine"],
-  ["advance", "Advance"],
-  ["miscExpense", "Miscellaneous"],
-];
-
 export interface LiveInvoicePreviewProps {
   data: LiveInvoiceData;
 }
 
 export function LiveInvoicePreview({ data }: LiveInvoicePreviewProps) {
-  const expenses = expenseLabels.filter(([key]) => Number(data[key]) > 0);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -121,17 +110,16 @@ export function LiveInvoicePreview({ data }: LiveInvoicePreviewProps) {
             rows={[
               ["Loading KM", `${data.loadingKm.toFixed(2)} km`],
               ["Unloading KM", `${data.unloadingKm.toFixed(2)} km`],
-              ["Distance", `${data.distance.toFixed(2)} km`],
+              ["KM", `${data.distance.toFixed(2)} km`],
             ]}
           />
           <InvoiceTable
             title="Fuel"
             rows={[
-              ["Rate", formatCurrency(data.dieselRate)],
-              ["Mileage", `${data.mileage.toFixed(2)} km/l`],
-              ["Fuel filled", `${data.fuelFilled.toFixed(2)} l`],
-              ["Fuel required", `${data.fuelRequired.toFixed(2)} l`],
-              ["Fuel cost", formatCurrency(data.fuelCost)],
+              ["Lt", `${data.fuelRequired.toFixed(2)} l`],
+              ["Paid Lt", `${data.fuelFilled.toFixed(2)} l`],
+              ["Pending Lt", `${Math.max(0, data.fuelRequired - data.fuelFilled).toFixed(2)} l`],
+              ["Desil Amt", formatCurrency(data.fuelCost)],
             ]}
           />
         </div>
@@ -139,11 +127,16 @@ export function LiveInvoicePreview({ data }: LiveInvoicePreviewProps) {
         <section className="border-t border-slate-200 pt-4">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Charges</p>
           <div className="space-y-1 text-xs">
-            <AmountRow label="Fuel cost" value={data.fuelCost} />
-            {expenses.map(([key, label]) => (
-              <AmountRow key={key} label={label} value={Number(data[key])} />
+            <AmountRow label="Desil Amt" value={data.fuelCost} />
+            {(data.extraExpenses ?? []).map((item) => (
+              <AmountRow key={`${item.title}-${item.amount}`} label={item.title} value={item.amount} />
             ))}
-            <AmountRow label="Expense total" value={data.expenseTotal} muted />
+            {data.voucherNumber ? (
+              <div className="flex justify-between gap-6">
+                <span>Voucher</span>
+                <span className="font-medium">{data.voucherNumber}</span>
+              </div>
+            ) : null}
           </div>
         </section>
 
@@ -167,7 +160,7 @@ export function LiveInvoicePreview({ data }: LiveInvoicePreviewProps) {
             )}
           </div>
           <div className="w-52 space-y-1 text-xs">
-            <AmountRow label="Grand total" value={data.grandTotal} strong />
+            <AmountRow label="Final Amount" value={data.grandTotal} strong />
             <AmountRow label="Paid" value={data.paidAmount} />
             <AmountRow label="Pending" value={data.pendingAmount} strong />
           </div>
@@ -182,7 +175,7 @@ export function LiveInvoicePreview({ data }: LiveInvoicePreviewProps) {
             )}
             {data.remarks && (
               <p>
-                <span className="font-semibold">Remarks:</span> {data.remarks}
+                <span className="font-semibold">Entry:</span> {data.remarks}
               </p>
             )}
             <p className="mt-2">Thank you for your business.</p>

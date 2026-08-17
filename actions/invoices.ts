@@ -9,8 +9,14 @@ import { generateInvoiceNumber } from "@/lib/utils";
 import type { ActionResult } from "@/types";
 
 const detailInclude = { trip: { include: { vehicle: true, driver: true } }, company: true, payments: { orderBy: { paymentDate: "desc" as const } } } as const;
+const BULK_DELETE_BATCH_SIZE = 100;
+const DELETE_TRANSACTION_OPTIONS = { maxWait: 10_000, timeout: 60_000 };
+
 const fail = (error: unknown): ActionResult<never> => {
   console.error("Invoice action failed:", error);
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2028") {
+    return { success: false, error: "Delete took too long. Please try again with fewer invoices selected." };
+  }
   return { success: false, error: "Unable to complete the invoice operation." };
 };
 
@@ -59,6 +65,50 @@ export async function generateInvoiceFromTrip(tripId: string) {
     revalidatePath("/invoices"); revalidatePath(`/trips/${tripId}`);
     return { success: true, data: { id: invoice.id, invoiceNumber } };
   } catch (error) { return fail(error); }
+}
+
+export async function deleteInvoice(id: string): Promise<ActionResult<{ id: string }>> {
+  const result = await deleteInvoices([id]);
+  if (!result.success) return result;
+  return { success: true, data: { id } };
+}
+
+export async function deleteInvoices(ids: string[]): Promise<ActionResult<{ count: number }>> {
+  const user = await requireCompany();
+  const uniqueIds = [...new Set(ids.map((id) => id.trim()).filter(Boolean))];
+  if (!uniqueIds.length) return { success: false, error: "Select at least one invoice." };
+
+  try {
+    const invoices = await prisma.invoice.findMany({
+      where: { id: { in: uniqueIds }, companyId: user.companyId },
+      select: { id: true, invoiceNumber: true },
+    });
+    if (!invoices.length) return { success: false, error: "No matching invoices found." };
+
+    const invoiceIds = invoices.map((invoice) => invoice.id);
+    for (let index = 0; index < invoiceIds.length; index += BULK_DELETE_BATCH_SIZE) {
+      const batch = invoiceIds.slice(index, index + BULK_DELETE_BATCH_SIZE);
+      await prisma.$transaction(async (tx) => {
+        await tx.payment.deleteMany({ where: { invoiceId: { in: batch }, companyId: user.companyId } });
+        await tx.invoice.deleteMany({ where: { id: { in: batch }, companyId: user.companyId } });
+      }, DELETE_TRANSACTION_OPTIONS);
+    }
+
+    const preview = invoices.slice(0, 20).map((invoice) => invoice.invoiceNumber).join(", ");
+    await createAuditLog({
+      action: "DELETE",
+      entity: "Invoice",
+      entityId: invoiceIds[0],
+      details: `Bulk deleted ${invoices.length} invoices${preview ? `: ${preview}` : ""}${invoices.length > 20 ? "…" : ""}`,
+      userId: user.id,
+      companyId: user.companyId,
+    });
+    revalidatePath("/invoices");
+    revalidatePath("/trips");
+    return { success: true, data: { count: invoices.length } };
+  } catch (error) {
+    return fail(error);
+  }
 }
 
 export async function updateInvoiceStatus(id: string, status: InvoiceStatus): Promise<ActionResult<{ id: string }>> {

@@ -1,20 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type { FieldPath } from "react-hook-form";
-import { Controller, useForm } from "react-hook-form";
-import { pdf } from "@react-pdf/renderer";
-import { saveAs } from "file-saver";
-import {
-  Download,
-  FileCheck2,
-  Mail,
-  MessageCircle,
-  Printer,
-  Save,
-} from "lucide-react";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { FileCheck2, Plus, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -25,13 +15,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { InvoicePdfDocument } from "@/features/invoices/invoice-pdf";
-import { formatCurrency } from "@/lib/utils";
 import { tripSchema, type TripInput } from "@/schemas";
 import type { LiveInvoiceData, TripFormValues } from "@/types";
-import { calculateTripTotals } from "@/utils/calculations";
 
-type TripFields = Omit<TripInput, "tripDate"> & { tripDate: string };
+type TripFields = Omit<TripInput, "tripDate"> & {
+  tripDate: string;
+  distance: number;
+  fuelRequired: number;
+  fuelCost: number;
+  grandTotal: number;
+  extraExpenses: { title: string; amount: number }[];
+};
 
 export interface TripEntryFormProps {
   vehicles: {
@@ -43,7 +37,12 @@ export interface TripEntryFormProps {
     mileage: number;
   }[];
   drivers: { id: string; name: string; phone: string }[];
-  defaultValues?: Partial<TripFormValues>;
+  defaultValues?: Partial<TripFormValues> & {
+    distance?: number;
+    fuelRequired?: number;
+    fuelCost?: number;
+    grandTotal?: number;
+  };
   company: {
     name: string;
     logo?: string | null;
@@ -62,35 +61,6 @@ export interface TripEntryFormProps {
   tripId?: string;
 }
 
-const numericFields: Array<{
-  name: Exclude<
-    keyof TripFields,
-    | "vehicleId"
-    | "driverId"
-    | "driverPhone"
-    | "tripDate"
-    | "tripTime"
-    | "source"
-    | "destination"
-    | "isLoaded"
-    | "isEmpty"
-    | "remarks"
-    | "voucherNumber"
-    | "narration"
-    | "paymentMethod"
-    | "status"
-  >;
-  label: string;
-}> = [
-  { name: "toll", label: "Toll" },
-  { name: "parking", label: "Parking" },
-  { name: "food", label: "Food" },
-  { name: "repair", label: "Repair" },
-  { name: "policeFine", label: "Police Fine" },
-  { name: "advance", label: "Advance" },
-  { name: "miscExpense", label: "Misc. Expense" },
-];
-
 const toDateInput = (date?: Date | string) => {
   const value = date ? new Date(date) : new Date();
   if (Number.isNaN(value.getTime())) return "";
@@ -98,11 +68,13 @@ const toDateInput = (date?: Date | string) => {
   return new Date(value.getTime() - offset * 60_000).toISOString().slice(0, 10);
 };
 
-const numberValue = (value: unknown) => Number(value) || 0;
+const numberValue = (value: unknown) => {
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount : 0;
+};
 
 export function TripEntryForm({
   vehicles,
-  drivers,
   defaultValues,
   company,
   nextInvoiceNumber,
@@ -131,48 +103,63 @@ export function TripEntryForm({
       destination: defaultValues?.destination ?? "",
       loadingKm: defaultValues?.loadingKm ?? 0,
       unloadingKm: defaultValues?.unloadingKm ?? 0,
+      distance: defaultValues?.distance ?? 0,
       isLoaded: defaultValues?.isLoaded ?? true,
       isEmpty: defaultValues?.isEmpty ?? false,
       remarks: defaultValues?.remarks ?? "",
       dieselRate: defaultValues?.dieselRate ?? 0,
       mileage: defaultValues?.mileage ?? 0,
       fuelFilled: defaultValues?.fuelFilled ?? 0,
-      toll: defaultValues?.toll ?? 0,
-      parking: defaultValues?.parking ?? 0,
-      food: defaultValues?.food ?? 0,
-      repair: defaultValues?.repair ?? 0,
-      policeFine: defaultValues?.policeFine ?? 0,
-      advance: defaultValues?.advance ?? 0,
-      miscExpense: defaultValues?.miscExpense ?? 0,
+      fuelRequired: defaultValues?.fuelRequired ?? 0,
+      fuelCost: defaultValues?.fuelCost ?? 0,
+      grandTotal: defaultValues?.grandTotal ?? 0,
+      toll: 0,
+      parking: 0,
+      food: 0,
+      repair: 0,
+      policeFine: 0,
+      advance: 0,
+      miscExpense: 0,
       voucherNumber: defaultValues?.voucherNumber ?? "",
       narration: defaultValues?.narration ?? "",
       paidAmount: defaultValues?.paidAmount ?? 0,
       paymentMethod: defaultValues?.paymentMethod ?? "CASH",
       status: defaultValues?.status ?? "PENDING",
+      extraExpenses: [],
     },
   });
-
-  const values = watch();
-  const selectedVehicle = vehicles.find((vehicle) => vehicle.id === values.vehicleId);
-  const selectedDriver = drivers.find((driver) => driver.id === values.driverId);
-  const totals = calculateTripTotals({
-    loadingKm: numberValue(values.loadingKm),
-    unloadingKm: numberValue(values.unloadingKm),
-    mileage: numberValue(values.mileage),
-    dieselRate: numberValue(values.dieselRate),
-    fuelFilled: numberValue(values.fuelFilled),
-    toll: numberValue(values.toll),
-    parking: numberValue(values.parking),
-    food: numberValue(values.food),
-    repair: numberValue(values.repair),
-    policeFine: numberValue(values.policeFine),
-    advance: numberValue(values.advance),
-    miscExpense: numberValue(values.miscExpense),
-    paidAmount: numberValue(values.paidAmount),
+  const { fields: extraExpenseFields, append, remove } = useFieldArray({
+    control,
+    name: "extraExpenses",
   });
 
-  const liveData = useMemo<LiveInvoiceData>(
-    () => ({
+  const loadingKm = numberValue(watch("loadingKm"));
+  const unloadingKm = numberValue(watch("unloadingKm"));
+  const fuelRequired = numberValue(watch("fuelRequired"));
+  const fuelFilled = numberValue(watch("fuelFilled"));
+  const pendingLt = Math.max(0, fuelRequired - fuelFilled);
+  const loadStatus = watch("isEmpty") ? "empty" : "loaded";
+  const values = watch();
+  const selectedVehicle = vehicles.find((vehicle) => vehicle.id === values.vehicleId);
+  const extraExpenses = (values.extraExpenses ?? []).filter(
+    (item) => item.title?.trim() && numberValue(item.amount) > 0
+  );
+  const extraTotal = extraExpenses.reduce((sum, item) => sum + numberValue(item.amount), 0);
+  const dieselAmt = numberValue(values.fuelCost);
+  const finalAmount = dieselAmt + extraTotal;
+
+  useEffect(() => {
+    const km = Math.max(0, unloadingKm - loadingKm);
+    setValue("distance", km, { shouldDirty: false });
+  }, [loadingKm, unloadingKm, setValue]);
+
+  useEffect(() => {
+    setValue("grandTotal", finalAmount, { shouldDirty: false });
+    setValue("miscExpense", extraTotal, { shouldDirty: false });
+  }, [extraTotal, finalAmount, setValue]);
+
+  useEffect(() => {
+    onChangeLiveData?.({
       invoiceNumber: nextInvoiceNumber,
       tripDate: values.tripDate || new Date(),
       companyName: company.name,
@@ -184,81 +171,80 @@ export function TripEntryForm({
       vehicleNumber: selectedVehicle?.number ?? defaultValues?.vehicleNumber ?? "",
       vehicleType: selectedVehicle?.type ?? defaultValues?.vehicleType ?? "",
       owner: selectedVehicle?.owner ?? defaultValues?.owner ?? undefined,
-      driverName: selectedDriver?.name ?? defaultValues?.driverName,
+      driverName: defaultValues?.driverName,
       driverPhone: values.driverPhone,
       source: values.source,
       destination: values.destination,
-      loadingKm: numberValue(values.loadingKm),
-      unloadingKm: numberValue(values.unloadingKm),
-      distance: totals.distance,
-      dieselRate: numberValue(values.dieselRate),
-      mileage: numberValue(values.mileage),
-      fuelFilled: numberValue(values.fuelFilled),
-      fuelRequired: totals.fuelRequired,
-      fuelCost: totals.fuelCost,
-      toll: numberValue(values.toll),
-      parking: numberValue(values.parking),
-      food: numberValue(values.food),
-      repair: numberValue(values.repair),
-      policeFine: numberValue(values.policeFine),
-      advance: numberValue(values.advance),
-      miscExpense: numberValue(values.miscExpense),
-      expenseTotal: totals.expenseTotal,
-      grandTotal: totals.grandTotal,
+      loadingKm,
+      unloadingKm,
+      distance: numberValue(values.distance),
+      dieselRate: 0,
+      mileage: 0,
+      fuelFilled,
+      fuelRequired,
+      fuelCost: dieselAmt,
+      toll: 0,
+      parking: 0,
+      food: 0,
+      repair: 0,
+      policeFine: 0,
+      advance: 0,
+      miscExpense: extraTotal,
+      expenseTotal: extraTotal,
+      grandTotal: finalAmount,
       paidAmount: numberValue(values.paidAmount),
-      pendingAmount: totals.pendingAmount,
-      paymentMethod: values.paymentMethod ?? undefined,
+      pendingAmount: Math.max(0, finalAmount - numberValue(values.paidAmount)),
       voucherNumber: values.voucherNumber,
       narration: values.narration,
       remarks: values.remarks,
+      extraExpenses: (values.extraExpenses ?? []).filter(
+        (item) => item.title?.trim() && numberValue(item.amount) > 0
+      ),
       signature: company.signature,
       upiId: company.upiId,
-    }),
-    [
-      company,
-      defaultValues?.driverName,
-      defaultValues?.owner,
-      defaultValues?.vehicleNumber,
-      defaultValues?.vehicleType,
-      nextInvoiceNumber,
-      selectedDriver?.name,
-      selectedVehicle,
-      totals.distance,
-      totals.expenseTotal,
-      totals.fuelCost,
-      totals.fuelRequired,
-      totals.grandTotal,
-      totals.pendingAmount,
-      values.advance,
-      values.destination,
-      values.dieselRate,
-      values.driverPhone,
-      values.food,
-      values.fuelFilled,
-      values.loadingKm,
-      values.mileage,
-      values.miscExpense,
-      values.narration,
-      values.paidAmount,
-      values.parking,
-      values.paymentMethod,
-      values.policeFine,
-      values.remarks,
-      values.repair,
-      values.source,
-      values.toll,
-      values.tripDate,
-      values.unloadingKm,
-      values.voucherNumber,
-    ]
-  );
-
-  useEffect(() => {
-    onChangeLiveData?.(liveData);
-  }, [liveData, onChangeLiveData]);
+    });
+  }, [
+    company,
+    defaultValues?.driverName,
+    defaultValues?.owner,
+    defaultValues?.vehicleNumber,
+    defaultValues?.vehicleType,
+    dieselAmt,
+    extraTotal,
+    finalAmount,
+    fuelFilled,
+    fuelRequired,
+    loadingKm,
+    nextInvoiceNumber,
+    onChangeLiveData,
+    selectedVehicle,
+    unloadingKm,
+    values.destination,
+    values.distance,
+    values.driverPhone,
+    values.extraExpenses,
+    values.narration,
+    values.paidAmount,
+    values.remarks,
+    values.source,
+    values.tripDate,
+    values.voucherNumber,
+  ]);
 
   const parseValues = (status: TripInput["status"]) => {
-    const parsed = tripSchema.safeParse({ ...values, status });
+    const values = watch();
+    const parsed = tripSchema.safeParse({
+      ...values,
+      status,
+      distance: numberValue(values.distance),
+      fuelRequired: numberValue(values.fuelRequired),
+      fuelFilled: numberValue(values.fuelFilled),
+      fuelCost: numberValue(values.fuelCost),
+      grandTotal: numberValue(values.grandTotal),
+      loadingKm: numberValue(values.loadingKm),
+      unloadingKm: numberValue(values.unloadingKm),
+      extraExpenses: values.extraExpenses ?? [],
+    });
     if (!parsed.success) {
       parsed.error.issues.forEach((issue) => {
         const field = issue.path[0];
@@ -272,51 +258,19 @@ export function TripEntryForm({
     return parsed.data;
   };
 
-  const runAction = async (kind: "draft" | "save" | "invoice") => {
-    const status = kind === "draft" ? "DRAFT" : kind === "invoice" ? "COMPLETED" : "PENDING";
-    const parsed = parseValues(status);
+  const runAction = async (kind: "draft" | "save") => {
+    const parsed = parseValues(kind === "draft" ? "DRAFT" : "COMPLETED");
     if (!parsed) return;
     setAction(kind);
     setActionError(null);
     try {
       if (kind === "draft") await onSaveDraft(parsed);
-      else await onSubmit({ ...parsed, status });
+      else await onSubmit({ ...parsed, status: "COMPLETED" });
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Unable to save the trip.");
     } finally {
       setAction(null);
     }
-  };
-
-  const downloadPdf = async () => {
-    setAction("pdf");
-    setActionError(null);
-    try {
-      const blob = await pdf(<InvoicePdfDocument data={liveData} />).toBlob();
-      saveAs(blob, `${liveData.invoiceNumber || "invoice"}.pdf`);
-    } catch (error) {
-      setActionError(error instanceof Error ? error.message : "Unable to create the PDF.");
-    } finally {
-      setAction(null);
-    }
-  };
-
-  const shareWhatsApp = () => {
-    const message = [
-      `Invoice ${liveData.invoiceNumber}`,
-      `${liveData.source} → ${liveData.destination}`,
-      `Total: ${formatCurrency(liveData.grandTotal)}`,
-      `Pending: ${formatCurrency(liveData.pendingAmount)}`,
-    ].join("\n");
-    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
-  };
-
-  const emailInvoice = () => {
-    const subject = `Invoice ${liveData.invoiceNumber}`;
-    const body = `Trip ${liveData.source} → ${liveData.destination}\nGrand total: ${formatCurrency(
-      liveData.grandTotal
-    )}\nPending: ${formatCurrency(liveData.pendingAmount)}`;
-    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
   return (
@@ -328,153 +282,150 @@ export function TripEntryForm({
       }}
       noValidate
     >
-      <FormSection title="Vehicle Information" description="Vehicle, owner, and driver details">
-        <Field label="Vehicle Number" error={errors.vehicleId?.message}>
-          <Controller
-            control={control}
-            name="vehicleId"
-            render={({ field }) => (
-              <Select
-                value={field.value}
-                onValueChange={(value) => {
-                  field.onChange(value);
-                  const vehicle = vehicles.find((item) => item.id === value);
-                  if (vehicle) setValue("mileage", vehicle.mileage, { shouldDirty: true });
-                }}
-              >
-                <SelectTrigger><SelectValue placeholder="Select vehicle number" /></SelectTrigger>
-                <SelectContent>
-                  {vehicles.map((vehicle) => (
-                    <SelectItem key={vehicle.id} value={vehicle.id}>{vehicle.number}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
-        </Field>
-        <Field label="Vehicle Type"><Input value={selectedVehicle?.type ?? defaultValues?.vehicleType ?? ""} readOnly placeholder="Auto filled" /></Field>
-        <Field label="Owner"><Input value={selectedVehicle?.owner ?? defaultValues?.owner ?? ""} readOnly placeholder="Auto filled" /></Field>
-        <Field label="Driver" error={errors.driverId?.message}>
-          <Controller
-            control={control}
-            name="driverId"
-            render={({ field }) => (
-              <Select
-                value={field.value ?? "__NONE__"}
-                onValueChange={(value) => {
-                  const driverId = value === "__NONE__" ? undefined : value;
-                  field.onChange(driverId);
-                  const driver = drivers.find((item) => item.id === driverId);
-                  setValue("driverPhone", driver?.phone ?? "", { shouldDirty: true });
-                }}
-              >
-                <SelectTrigger><SelectValue placeholder="Select driver" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__NONE__">No driver</SelectItem>
-                  {drivers.map((driver) => (
-                    <SelectItem key={driver.id} value={driver.id}>{driver.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
-        </Field>
-        <Field label="Driver Phone" error={errors.driverPhone?.message}>
-          <Input {...register("driverPhone")} placeholder="Driver phone number" />
-        </Field>
-        <Field label="Fuel Type"><Input value={selectedVehicle?.fuelType ?? defaultValues?.fuelType ?? ""} readOnly placeholder="Auto filled" /></Field>
-      </FormSection>
-
-      <FormSection title="Trip Information" description="Date, route, and kilometer details">
-        <Field label="Trip Date" error={errors.tripDate?.message}><Input type="date" {...register("tripDate")} /></Field>
-        <Field label="Trip Time" error={errors.tripTime?.message}><Input type="time" {...register("tripTime")} /></Field>
-        <Field label="Source" error={errors.source?.message}><Input {...register("source")} placeholder="Loading location" /></Field>
-        <Field label="Destination" error={errors.destination?.message}><Input {...register("destination")} placeholder="Unloading location" /></Field>
-        <NumberField label="Loading KM" name="loadingKm" register={register} error={errors.loadingKm?.message} />
-        <NumberField label="Unloading KM" name="unloadingKm" register={register} error={errors.unloadingKm?.message} />
-        <CheckField label="Loaded" name="isLoaded" control={control} />
-        <CheckField label="Empty" name="isEmpty" control={control} />
-        <div className="sm:col-span-2">
-          <Field label="Remarks" error={errors.remarks?.message}><Textarea {...register("remarks")} rows={3} placeholder="Any trip remarks" /></Field>
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 bg-slate-50 px-5 py-4">
+          <h2 className="text-base font-semibold tracking-tight text-slate-900">Trip details</h2>
+          <p className="mt-0.5 text-xs text-slate-500">Same columns as the vehicle diesel expense sheet</p>
         </div>
-      </FormSection>
-
-      <FormSection title="Fuel Information" description="Diesel rate, mileage, and calculated fuel cost">
-        <NumberField label="Diesel Rate" name="dieselRate" register={register} error={errors.dieselRate?.message} />
-        <NumberField label="Mileage" name="mileage" register={register} error={errors.mileage?.message} />
-        <NumberField label="Fuel Filled" name="fuelFilled" register={register} error={errors.fuelFilled?.message} />
-        <Field label="Fuel Required"><Input value={totals.fuelRequired.toFixed(2)} readOnly className="bg-slate-50 font-medium text-slate-700" /></Field>
-        <Field label="Fuel Cost"><Input value={formatCurrency(totals.fuelCost)} readOnly className="bg-slate-50 font-medium text-slate-700" /></Field>
-      </FormSection>
-
-      <FormSection title="Expense Information" description="Toll, parking, food, and other trip expenses">
-        {numericFields.map(({ name, label }) => (
-          <NumberField key={name} label={label} name={name} register={register} error={errors[name]?.message} />
-        ))}
-        <Field label="Voucher Number" error={errors.voucherNumber?.message}><Input {...register("voucherNumber")} placeholder="Voucher number" /></Field>
-        <div className="sm:col-span-2">
-          <Field label="Narration" error={errors.narration?.message}><Textarea {...register("narration")} rows={3} placeholder="Expense narration" /></Field>
+        <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
+          <Field label="Vehicle" error={errors.vehicleId?.message}>
+            <Controller
+              control={control}
+              name="vehicleId"
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger><SelectValue placeholder="Select vehicle" /></SelectTrigger>
+                  <SelectContent>
+                    {vehicles.map((vehicle) => (
+                      <SelectItem key={vehicle.id} value={vehicle.id}>{vehicle.number}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </Field>
+          <Field label="Date" error={errors.tripDate?.message}>
+            <Input type="date" {...register("tripDate")} />
+          </Field>
+          <Field label="From" error={errors.source?.message}>
+            <Input {...register("source")} placeholder="From" />
+          </Field>
+          <Field label="To" error={errors.destination?.message}>
+            <Input {...register("destination")} placeholder="To" />
+          </Field>
+          <NumberField label="Loading KM" name="loadingKm" register={register} error={errors.loadingKm?.message} />
+          <NumberField label="Unloading KM" name="unloadingKm" register={register} error={errors.unloadingKm?.message} />
+          <Field label="Loaded empty">
+            <Controller
+              control={control}
+              name="isEmpty"
+              render={({ field }) => (
+                <Select
+                  value={loadStatus}
+                  onValueChange={(value) => {
+                    field.onChange(value === "empty");
+                    setValue("isLoaded", value === "loaded");
+                  }}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="loaded">Loaded</SelectItem>
+                    <SelectItem value="empty">Empty</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </Field>
+          <NumberField label="KM" name="distance" register={register} error={errors.distance?.message} />
+          <NumberField label="Lt" name="fuelRequired" register={register} error={errors.fuelRequired?.message} />
+          <NumberField label="Paid Lt" name="fuelFilled" register={register} error={errors.fuelFilled?.message} />
+          <Field label="Pending Lt">
+            <Input value={pendingLt} readOnly className="bg-slate-50 font-medium text-slate-700" />
+          </Field>
+          <Field label="Entry" error={errors.remarks?.message}>
+            <Input {...register("remarks")} placeholder="Entry" />
+          </Field>
+          <NumberField label="Desil Amt" name="fuelCost" register={register} error={errors.fuelCost?.message} />
+          <Field label="Voucher" error={errors.voucherNumber?.message}>
+            <Input {...register("voucherNumber")} placeholder="Voucher" />
+          </Field>
+          <Field label="Final Amount">
+            <Input value={finalAmount} readOnly className="bg-slate-50 font-semibold text-slate-800" />
+          </Field>
+          <div className="sm:col-span-2 lg:col-span-3">
+            <Field label="Narration" error={errors.narration?.message}>
+              <Textarea {...register("narration")} rows={3} placeholder="Narration" />
+            </Field>
+          </div>
         </div>
-      </FormSection>
+      </section>
 
-      <FormSection title="Payment Information" description="Paid amount, pending balance, and payment method">
-        <NumberField label="Paid Amount" name="paidAmount" register={register} error={errors.paidAmount?.message} />
-        <Field label="Pending Amount"><Input value={formatCurrency(totals.pendingAmount)} readOnly className="bg-slate-50 font-semibold text-slate-800" /></Field>
-        <Field label="Payment Method" error={errors.paymentMethod?.message}>
-          <Controller
-            control={control}
-            name="paymentMethod"
-            render={({ field }) => (
-              <Select value={field.value ?? "CASH"} onValueChange={field.onChange}>
-                <SelectTrigger><SelectValue placeholder="Select payment method" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="CASH">Cash</SelectItem>
-                  <SelectItem value="UPI">UPI</SelectItem>
-                  <SelectItem value="BANK">Bank</SelectItem>
-                  <SelectItem value="CHEQUE">Cheque</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
-          />
-        </Field>
-      </FormSection>
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-5 py-4">
+          <div>
+            <h2 className="text-base font-semibold tracking-tight text-slate-900">Other expenses</h2>
+            <p className="mt-0.5 text-xs text-slate-500">Toll, parking, food, repair, or any extra trip cost</p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => append({ title: "", amount: 0 })}
+          >
+            <Plus className="h-4 w-4" />
+            Add expense
+          </Button>
+        </div>
+        <div className="space-y-3 p-5">
+          {extraExpenseFields.length ? (
+            extraExpenseFields.map((field, index) => (
+              <div key={field.id} className="grid gap-3 sm:grid-cols-[1fr_160px_auto]">
+                <Input {...register(`extraExpenses.${index}.title`)} placeholder="Expense name, e.g. Toll" />
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="Amount"
+                  {...register(`extraExpenses.${index}.amount`, { valueAsNumber: true })}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="text-red-600"
+                  onClick={() => remove(index)}
+                  aria-label="Remove expense"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))
+          ) : (
+            <p className="text-sm text-slate-500">No other expenses yet. Click Add expense to include extra costs.</p>
+          )}
+          {extraTotal > 0 ? (
+            <p className="text-right text-sm font-medium text-slate-700">
+              Other expenses total: {extraTotal.toFixed(2)}
+            </p>
+          ) : null}
+        </div>
+      </section>
 
-      {actionError && <p role="alert" className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{actionError}</p>}
+      {actionError ? (
+        <p role="alert" className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{actionError}</p>
+      ) : null}
 
-      <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-5">
-        <ActionButton icon={Save} label="Save Draft" busy={action === "draft"} onClick={() => void runAction("draft")} />
-        <ActionButton icon={FileCheck2} label={tripId ? "Update Trip" : "Save Trip"} busy={action === "save"} type="submit" />
-        <ActionButton icon={FileCheck2} label="Generate Invoice" busy={action === "invoice"} onClick={() => void runAction("invoice")} />
-        <ActionButton icon={Printer} label="Print" onClick={() => window.print()} />
-        <ActionButton icon={Download} label="Download PDF" busy={action === "pdf"} onClick={() => void downloadPdf()} />
-        <ActionButton icon={MessageCircle} label="Share WhatsApp" onClick={shareWhatsApp} />
-        <ActionButton icon={Mail} label="Email Invoice" onClick={emailInvoice} />
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" disabled={action !== null} onClick={() => void runAction("draft")}>
+          <Save className="h-4 w-4" />
+          {action === "draft" ? "Saving…" : "Save draft"}
+        </Button>
+        <Button type="submit" disabled={action !== null}>
+          <FileCheck2 className="h-4 w-4" />
+          {action === "save" ? "Saving…" : tripId ? "Update trip" : "Save trip"}
+        </Button>
       </div>
     </form>
-  );
-}
-
-function FormSection({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="border-b border-slate-100 bg-linear-to-r from-slate-50 to-white px-5 py-4">
-        <h2 className="text-base font-semibold tracking-tight text-slate-900">
-          {title}
-        </h2>
-        {description && (
-          <p className="mt-0.5 text-xs text-slate-500">{description}</p>
-        )}
-      </div>
-      <div className="grid gap-4 p-5 sm:grid-cols-2">{children}</div>
-    </section>
   );
 }
 
@@ -489,11 +440,9 @@ function Field({
 }) {
   return (
     <div className="space-y-2">
-      <Label className="!text-[13px] !font-semibold !text-slate-800">
-        {label}
-      </Label>
+      <Label className="!text-[13px] !font-semibold !text-slate-800">{label}</Label>
       {children}
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error ? <p className="text-xs text-red-600">{error}</p> : null}
     </div>
   );
 }
@@ -513,48 +462,6 @@ function NumberField({
     <Field label={label} error={error}>
       <Input type="number" min="0" step="0.01" {...register(name, { valueAsNumber: true })} />
     </Field>
-  );
-}
-
-function CheckField({
-  label,
-  name,
-  control,
-}: {
-  label: string;
-  name: "isLoaded" | "isEmpty";
-  control: ReturnType<typeof useForm<TripFields>>["control"];
-}) {
-  return (
-    <div className="flex items-center gap-2 pt-7">
-      <Controller
-        control={control}
-        name={name}
-        render={({ field }) => <Checkbox checked={field.value} onCheckedChange={field.onChange} />}
-      />
-      <Label className="!font-semibold !text-slate-800">{label}</Label>
-    </div>
-  );
-}
-
-function ActionButton({
-  icon: Icon,
-  label,
-  busy,
-  type = "button",
-  onClick,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  busy?: boolean;
-  type?: "button" | "submit";
-  onClick?: () => void;
-}) {
-  return (
-    <Button type={type} variant="outline" disabled={busy} onClick={onClick}>
-      <Icon className="h-4 w-4" />
-      {busy ? "Working…" : label}
-    </Button>
   );
 }
 

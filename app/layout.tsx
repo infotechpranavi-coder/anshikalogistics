@@ -5,6 +5,7 @@ import { QueryProvider } from "@/components/providers/query-provider";
 import { SessionProvider } from "@/components/providers/session-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AppToaster } from "@/components/providers/toaster";
+import { auth } from "@/lib/auth";
 
 import "./globals.css";
 
@@ -26,11 +27,13 @@ export const metadata: Metadata = {
   description: "Fleet fuel, trip, vehicle, and expense management.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await auth();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
@@ -42,7 +45,7 @@ export default function RootLayout({
           forcedTheme="light"
           enableSystem={false}
         >
-          <SessionProvider>
+          <SessionProvider session={session}>
             <QueryProvider>
               {children}
               <AppToaster />

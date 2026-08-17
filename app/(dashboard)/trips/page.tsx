@@ -4,11 +4,13 @@ import { getTrips } from "@/actions/trips";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
+import { ExcelImportDialog } from "@/features/trips/excel-import-dialog";
 import { TripsPageTable } from "@/features/trips/trips-page-table";
 
 export default async function TripsPage() {
-  const result = await getTrips({ pageSize: 100 });
+  const result = await getTrips({ pageSize: 5000 });
   const trips = result.data?.data ?? [];
+  const total = result.data?.total ?? trips.length;
 
   return (
     <div className="space-y-6">
@@ -16,6 +18,7 @@ export default async function TripsPage() {
         title="Trips"
         description="Plan routes, track trip costs, and manage invoices."
       >
+        <ExcelImportDialog />
         <Button asChild>
           <Link href="/trips/new">
             <Plus className="h-4 w-4" />
@@ -31,19 +34,23 @@ export default async function TripsPage() {
           description={result.error ?? "Please refresh the page and try again."}
         />
       ) : trips.length ? (
-        <TripsPageTable data={trips} />
+        <TripsPageTable data={trips} total={total} />
       ) : (
         <EmptyState
           icon={Route}
           title="No trips yet"
-          description="Create your first trip to begin tracking fleet activity."
+          description="Create a trip or import the Vehicle Diesel Expense Excel workbook."
           action={
-            <Button asChild>
-              <Link href="/trips/new">Create first trip</Link>
-            </Button>
+            <div className="flex flex-wrap justify-center gap-2">
+              <ExcelImportDialog />
+              <Button asChild>
+                <Link href="/trips/new">Create first trip</Link>
+              </Button>
+            </div>
           }
         />
       )}
     </div>
   );
 }
+

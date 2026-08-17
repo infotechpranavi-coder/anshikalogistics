@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Bell, LogOut, Menu, Search } from "lucide-react";
-import { signOut, useSession } from "next-auth/react";
+import { signOut } from "next-auth/react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,11 @@ import {
 
 interface TopNavProps {
   onMenuClick?: () => void;
+  user?: {
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+  };
 }
 
 function getInitials(name?: string | null) {
@@ -30,9 +35,7 @@ function getInitials(name?: string | null) {
     .toUpperCase();
 }
 
-export function TopNav({ onMenuClick }: TopNavProps) {
-  const { data: session } = useSession();
-
+export function TopNav({ onMenuClick, user }: TopNavProps) {
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-slate-200 bg-white/95 px-4 backdrop-blur-md sm:px-6">
       <Button
@@ -80,15 +83,15 @@ export function TopNav({ onMenuClick }: TopNavProps) {
             >
               <Avatar className="h-8 w-8 ring-2 ring-teal-100">
                 <AvatarImage
-                  src={session?.user?.image ?? undefined}
-                  alt={session?.user?.name ?? "User"}
+                  src={user?.image ?? undefined}
+                  alt={user?.name ?? "User"}
                 />
                 <AvatarFallback className="bg-teal-50 font-semibold text-teal-700">
-                  {getInitials(session?.user?.name)}
+                  {getInitials(user?.name)}
                 </AvatarFallback>
               </Avatar>
               <span className="hidden max-w-36 truncate text-sm font-semibold md:inline">
-                {session?.user?.name ?? "Account"}
+                {user?.name ?? "Account"}
               </span>
             </Button>
           </DropdownMenuTrigger>
@@ -99,10 +102,10 @@ export function TopNav({ onMenuClick }: TopNavProps) {
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
                 <p className="truncate text-sm font-semibold text-slate-900">
-                  {session?.user?.name ?? "Your account"}
+                  {user?.name ?? "Your account"}
                 </p>
                 <p className="truncate text-xs text-slate-500">
-                  {session?.user?.email}
+                  {user?.email}
                 </p>
               </div>
             </DropdownMenuLabel>

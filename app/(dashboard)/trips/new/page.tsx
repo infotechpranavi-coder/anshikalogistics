@@ -64,7 +64,7 @@ export default async function NewTripPage() {
     <div className="space-y-6">
       <PageHeader
         title="New Trip"
-        description="Fill trip details on the left. Invoice preview updates live on the right."
+        description="Enter trip details on the left. Invoice preview updates live on the right."
       />
       <TripFormPage
         vehicles={vehicles}
