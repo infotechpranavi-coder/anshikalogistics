@@ -56,7 +56,7 @@ export function VehicleForm({
       return;
     }
     const result = await onSubmit(parsed.data);
-    if (!result.success) {
+    if (!result.success || !result.data) {
       setMessage(result.error ?? "Unable to save vehicle.");
       return;
     }

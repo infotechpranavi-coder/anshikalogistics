@@ -24,7 +24,13 @@ export default async function EditVehiclePage({
         description="Update the vehicle number and assignment."
       />
       <VehicleForm
-        initial={vehicle}
+        initial={{
+          number: vehicle.number,
+          type: vehicle.type,
+          fuelType: vehicle.fuelType,
+          status: vehicle.status,
+          currentDriverId: vehicle.currentDriverId,
+        }}
         drivers={driverResult.data ?? []}
         onSubmit={updateVehicle.bind(null, id)}
       />

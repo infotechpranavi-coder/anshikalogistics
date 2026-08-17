@@ -84,7 +84,7 @@ export async function updateVehicle(id: string, input: VehicleInput): Promise<Ac
 
 export async function deleteVehicle(id: string): Promise<ActionResult<{ id: string }>> {
   const result = await deleteVehicles([id]);
-  if (!result.success) return result;
+  if (!result.success) return { success: false, error: result.error, errors: result.errors };
   return { success: true, data: { id } };
 }
 

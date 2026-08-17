@@ -48,7 +48,7 @@ export async function updateDriver(id: string, input: DriverInput): Promise<Acti
 
 export async function deleteDriver(id: string): Promise<ActionResult<{ id: string }>> {
   const result = await deleteDrivers([id]);
-  if (!result.success) return result;
+  if (!result.success) return { success: false, error: result.error, errors: result.errors };
   return { success: true, data: { id } };
 }
 

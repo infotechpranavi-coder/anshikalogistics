@@ -1,6 +1,6 @@
 "use server";
 
-import type { InvoiceStatus, Prisma } from "@prisma/client";
+import { Prisma, type InvoiceStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { createAuditLog } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
@@ -69,7 +69,7 @@ export async function generateInvoiceFromTrip(tripId: string) {
 
 export async function deleteInvoice(id: string): Promise<ActionResult<{ id: string }>> {
   const result = await deleteInvoices([id]);
-  if (!result.success) return result;
+  if (!result.success) return { success: false, error: result.error, errors: result.errors };
   return { success: true, data: { id } };
 }
 
