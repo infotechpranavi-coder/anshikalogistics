@@ -44,6 +44,7 @@ export interface TripEntryFormProps {
     fuelRequired?: number;
     fuelCost?: number;
     grandTotal?: number;
+    extraExpenses?: { title: string; amount: number }[];
   };
   company: {
     name: string;
@@ -127,7 +128,7 @@ export function TripEntryForm({
       paidAmount: defaultValues?.paidAmount ?? 0,
       paymentMethod: defaultValues?.paymentMethod ?? "CASH",
       status: defaultValues?.status ?? "PENDING",
-      extraExpenses: [],
+      extraExpenses: defaultValues?.extraExpenses ?? [],
     },
   });
   const { fields: extraExpenseFields, append, remove } = useFieldArray({

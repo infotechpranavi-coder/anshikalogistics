@@ -519,6 +519,7 @@ const tripDetailSelect = {
   destination: true,
   loadingKm: true,
   unloadingKm: true,
+  distance: true,
   isLoaded: true,
   isEmpty: true,
   remarks: true,
@@ -535,6 +536,8 @@ const tripDetailSelect = {
   advance: true,
   miscExpense: true,
   paidAmount: true,
+  expenseTotal: true,
+  grandTotal: true,
   paymentMethod: true,
   voucherNumber: true,
   narration: true,
@@ -544,6 +547,7 @@ const tripDetailSelect = {
   driverPhone: true,
   vehicle: { select: { number: true, type: true, owner: true, fuelType: true } },
   driver: { select: { name: true, phone: true } },
+  expenses: { select: { title: true, amount: true } },
   invoice: { select: { invoiceNumber: true } },
 } satisfies Prisma.TripSelect;
 
