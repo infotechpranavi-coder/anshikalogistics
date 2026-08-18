@@ -8,7 +8,7 @@ import type { TripInput } from "@/schemas";
 
 export default async function NewTripPage() {
   const user = await requireCompany();
-  const [vehicles, company] = await Promise.all([
+  const [vehicles, drivers, company] = await Promise.all([
     prisma.vehicle.findMany({
       where: { companyId: user.companyId, status: "ACTIVE" },
       orderBy: { number: "asc" },
@@ -20,6 +20,11 @@ export default async function NewTripPage() {
         fuelType: true,
         mileage: true,
       },
+    }),
+    prisma.driver.findMany({
+      where: { companyId: user.companyId, isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, phone: true },
     }),
     prisma.company.findUniqueOrThrow({
       where: { id: user.companyId },
@@ -55,6 +60,7 @@ export default async function NewTripPage() {
       />
       <TripFormPage
         vehicles={vehicles}
+        drivers={drivers}
         company={company}
         nextInvoiceNumber={`${company.invoicePrefix}-DRAFT`}
         onSubmit={saveTrip}

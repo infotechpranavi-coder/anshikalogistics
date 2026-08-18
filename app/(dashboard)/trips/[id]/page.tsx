@@ -13,7 +13,7 @@ export default async function EditTripPage({
 }) {
   const { id } = await params;
   const user = await requireCompany();
-  const [tripResult, vehicles, company] = await Promise.all([
+  const [tripResult, vehicles, drivers, company] = await Promise.all([
     getTripById(id),
     prisma.vehicle.findMany({
       where: { companyId: user.companyId },
@@ -26,6 +26,11 @@ export default async function EditTripPage({
         fuelType: true,
         mileage: true,
       },
+    }),
+    prisma.driver.findMany({
+      where: { companyId: user.companyId, isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, phone: true },
     }),
     prisma.company.findUniqueOrThrow({
       where: { id: user.companyId },
@@ -65,6 +70,7 @@ export default async function EditTripPage({
       <TripFormPage
         tripId={trip.id}
         vehicles={vehicles}
+        drivers={drivers}
         company={company}
         nextInvoiceNumber={trip.invoice?.invoiceNumber ?? `${company.invoicePrefix}-DRAFT`}
         defaultValues={{

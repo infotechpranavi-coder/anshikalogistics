@@ -145,6 +145,7 @@ export function TripEntryForm({
   const loadStatus = useWatch({ control, name: "isEmpty" }) ? "empty" : "loaded";
   const values = watch();
   const selectedVehicle = vehicles.find((vehicle) => vehicle.id === values.vehicleId);
+  const selectedDriver = drivers.find((d) => d.id === values.driverId) ?? null;
   const extraExpenses = (values.extraExpenses ?? []).filter(
     (item) => item.title?.trim() && numberValue(item.amount) > 0
   );
@@ -175,7 +176,7 @@ export function TripEntryForm({
       vehicleNumber: selectedVehicle?.number ?? defaultValues?.vehicleNumber ?? "",
       vehicleType: selectedVehicle?.type ?? defaultValues?.vehicleType ?? "",
       owner: selectedVehicle?.owner ?? defaultValues?.owner ?? undefined,
-      driverName: defaultValues?.driverName,
+      driverName: selectedDriver?.name ?? defaultValues?.driverName,
       driverPhone: values.driverPhone,
       source: values.source,
       destination: values.destination,
@@ -209,7 +210,7 @@ export function TripEntryForm({
     });
   }, [
     company,
-    defaultValues?.driverName,
+    drivers,
     defaultValues?.owner,
     defaultValues?.vehicleNumber,
     defaultValues?.vehicleType,
@@ -225,6 +226,7 @@ export function TripEntryForm({
     unloadingKm,
     values.destination,
     values.distance,
+    values.driverId,
     values.driverPhone,
     values.extraExpenses,
     values.narration,
