@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { calculatePendingLt } from "@/utils/calculations";
 
 export interface ExcelTripRow {
   sheetName: string;
@@ -252,8 +253,7 @@ export async function parseDieselExpenseWorkbook(
       const distance = distanceFromSheet > 0 ? distanceFromSheet : Math.max(0, unloadingKm - loadingKm);
       const fuelRequired = cellNumber(getCell(row, headers.litre));
       const fuelFilled = cellNumber(getCell(row, headers.paidLt));
-      // Always auto-calculate Pending Lt from Lt and Paid Lt (ignore the sheet's Pending Lt column).
-      const pendingLt = Math.max(0, fuelRequired - fuelFilled);
+      const pendingLt = calculatePendingLt(fuelRequired, fuelFilled);
       const voucherText = cellText(getCell(row, headers.voucher));
       const voucherAmount = cellNumber(getCell(row, headers.voucher));
       const fuelCost =

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { APP_LOGO } from "@/lib/brand";
+import { calculatePendingLt } from "@/utils/calculations";
 import { buildUpiQrPayload, generateQrDataUrl } from "@/lib/qrcode";
 import type { LiveInvoiceData } from "@/types";
 
@@ -113,7 +114,7 @@ export function LiveInvoicePreview({ data }: LiveInvoicePreviewProps) {
             rows={[
               ["Lt", `${data.fuelRequired.toFixed(2)} l`],
               ["Paid Lt", `${data.fuelFilled.toFixed(2)} l`],
-              ["Pending Lt", `${Math.max(0, data.fuelRequired - data.fuelFilled).toFixed(2)} l`],
+              ["Pending Lt", `${calculatePendingLt(data.fuelRequired, data.fuelFilled).toFixed(2)} l`],
               ["Desil Amt", formatCurrency(data.fuelCost)],
             ]}
           />

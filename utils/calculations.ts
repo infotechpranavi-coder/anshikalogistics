@@ -51,6 +51,10 @@ export function calculatePending(grandTotal: number, paidAmount: number): number
   return round2(Math.max(0, (grandTotal || 0) - (paidAmount || 0)));
 }
 
+export function calculatePendingLt(lt: number, paidLt: number): number {
+  return round2((lt || 0) - (paidLt || 0));
+}
+
 export interface TripCalculationInput {
   loadingKm: number;
   unloadingKm: number;

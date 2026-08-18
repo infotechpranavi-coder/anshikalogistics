@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { calculatePendingLt } from "@/utils/calculations";
 
 export interface TripTableRow {
   id: string;
@@ -141,7 +142,7 @@ export function TripsTable({
         id: "pendingLt",
         header: "Pending Lt",
         cell: ({ row }) =>
-          formatQty(Math.max(0, (row.original.fuelRequired || 0) - (row.original.fuelFilled || 0))),
+          formatQty(calculatePendingLt(row.original.fuelRequired, row.original.fuelFilled)),
       },
       {
         id: "entry",

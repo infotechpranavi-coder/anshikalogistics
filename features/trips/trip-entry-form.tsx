@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { FieldPath } from "react-hook-form";
-import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { FileCheck2, Plus, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { tripSchema, type TripInput } from "@/schemas";
 import { APP_LOGO } from "@/lib/brand";
+import { calculatePendingLt } from "@/utils/calculations";
 import type { LiveInvoiceData, TripFormValues } from "@/types";
 
 type TripFields = Omit<TripInput, "tripDate"> & {
@@ -134,12 +135,12 @@ export function TripEntryForm({
     name: "extraExpenses",
   });
 
-  const loadingKm = numberValue(watch("loadingKm"));
-  const unloadingKm = numberValue(watch("unloadingKm"));
-  const fuelRequired = numberValue(watch("fuelRequired"));
-  const fuelFilled = numberValue(watch("fuelFilled"));
-  const pendingLt = Math.max(0, fuelRequired - fuelFilled);
-  const loadStatus = watch("isEmpty") ? "empty" : "loaded";
+  const loadingKm = numberValue(useWatch({ control, name: "loadingKm" }));
+  const unloadingKm = numberValue(useWatch({ control, name: "unloadingKm" }));
+  const fuelRequired = numberValue(useWatch({ control, name: "fuelRequired" }));
+  const fuelFilled = numberValue(useWatch({ control, name: "fuelFilled" }));
+  const pendingLt = calculatePendingLt(fuelRequired, fuelFilled);
+  const loadStatus = useWatch({ control, name: "isEmpty" }) ? "empty" : "loaded";
   const values = watch();
   const selectedVehicle = vehicles.find((vehicle) => vehicle.id === values.vehicleId);
   const extraExpenses = (values.extraExpenses ?? []).filter(
@@ -341,7 +342,12 @@ export function TripEntryForm({
           <NumberField label="Lt" name="fuelRequired" register={register} error={errors.fuelRequired?.message} />
           <NumberField label="Paid Lt" name="fuelFilled" register={register} error={errors.fuelFilled?.message} />
           <Field label="Pending Lt">
-            <Input value={pendingLt} readOnly className="bg-slate-50 font-medium text-slate-700" />
+            <Input
+              value={pendingLt.toFixed(2)}
+              readOnly
+              tabIndex={-1}
+              className="bg-slate-50 font-medium text-slate-700"
+            />
           </Field>
           <Field label="Entry" error={errors.remarks?.message}>
             <Input {...register("remarks")} placeholder="Entry" />
