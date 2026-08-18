@@ -38,6 +38,12 @@ export default async function NewTripPage() {
         signature: true,
         upiId: true,
         invoicePrefix: true,
+        bankName: true,
+        bankAccount: true,
+        bankIfsc: true,
+        bankBranch: true,
+        city: true,
+        state: true,
       },
     }),
   ]);
@@ -56,7 +62,7 @@ export default async function NewTripPage() {
     <div className="space-y-6">
       <PageHeader
         title="New Trip"
-        description="Enter trip details on the left. Invoice preview updates live on the right."
+        description="Enter trip details, then open the Preview tab to see the full invoice."
       />
       <TripFormPage
         vehicles={vehicles}

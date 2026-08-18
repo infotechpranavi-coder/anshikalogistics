@@ -44,6 +44,12 @@ export default async function EditTripPage({
         signature: true,
         upiId: true,
         invoicePrefix: true,
+        bankName: true,
+        bankAccount: true,
+        bankIfsc: true,
+        bankBranch: true,
+        city: true,
+        state: true,
       },
     }),
   ]);
@@ -65,7 +71,7 @@ export default async function EditTripPage({
     <div className="space-y-6">
       <PageHeader
         title={`Edit ${trip.tripNumber}`}
-        description="Update trip, fuel, expense, and payment details."
+        description="Update trip details, then open the Preview tab to see the full invoice."
       />
       <TripFormPage
         tripId={trip.id}
@@ -97,6 +103,8 @@ export default async function EditTripPage({
           fuelRequired: trip.fuelRequired,
           fuelFilled: trip.fuelFilled,
           fuelCost: trip.fuelCost,
+          acHours: trip.acHours,
+          acLitresPerHour: trip.acLitresPerHour,
           grandTotal: trip.grandTotal,
           toll: trip.toll,
           parking: trip.parking,
@@ -111,6 +119,7 @@ export default async function EditTripPage({
           paymentMethod: trip.paymentMethod ?? undefined,
           extraExpenses: (trip.expenses ?? []).map((e) => ({ title: e.title, amount: e.amount })),
           status: trip.status,
+          tripNumber: trip.tripNumber,
         }}
         onSubmit={saveTrip}
         onSaveDraft={saveTrip}

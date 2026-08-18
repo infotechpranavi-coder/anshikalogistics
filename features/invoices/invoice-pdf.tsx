@@ -185,14 +185,11 @@ export function InvoicePdfDocument({ data }: InvoicePdfProps) {
 
         <View style={styles.totals}>
           <PdfRow label="Grand total" value={money(data.grandTotal)} strong />
-          <PdfRow label="Paid" value={money(data.paidAmount)} />
-          <PdfRow label="Pending" value={money(data.pendingAmount)} strong />
         </View>
 
         <View style={styles.footer}>
           <View style={{ maxWidth: "58%" }}>
             {data.upiId ? <Text style={styles.muted}>UPI: {data.upiId}</Text> : null}
-            {data.narration ? <Text style={styles.muted}>Narration: {data.narration}</Text> : null}
             {data.remarks ? <Text style={styles.muted}>Remarks: {data.remarks}</Text> : null}
             <Text style={[styles.muted, { marginTop: 8 }]}>Thank you for your business.</Text>
           </View>

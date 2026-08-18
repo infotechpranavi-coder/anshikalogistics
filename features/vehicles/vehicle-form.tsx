@@ -6,20 +6,41 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { vehicleSchema, type VehicleInput } from "@/schemas";
+import type { VehicleRow } from "@/features/vehicles/vehicles-table";
 import type { ActionResult } from "@/types";
 
 type FormValues = Pick<VehicleInput, "number" | "type" | "fuelType" | "status" | "currentDriverId">;
 
+const defaultFormValues: FormValues = {
+  number: "",
+  type: "Truck",
+  fuelType: "DIESEL",
+  status: "ACTIVE",
+  currentDriverId: null,
+};
+
 export function VehicleForm({
   initial,
   drivers = [],
+  embedded = false,
   onSubmit,
+  onCreated,
+  onCancel,
 }: {
   initial?: Partial<VehicleInput> & { id?: string };
   drivers?: { id: string; name: string }[];
+  embedded?: boolean;
   onSubmit: (data: VehicleInput) => Promise<ActionResult<{ id: string }>>;
+  onCreated?: (vehicle: VehicleRow) => void;
+  onCancel?: () => void;
 }) {
   const router = useRouter();
   const [message, setMessage] = useState("");
@@ -28,14 +49,15 @@ export function VehicleForm({
     control,
     handleSubmit,
     setError,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     defaultValues: {
-      number: initial?.number ?? "",
-      type: initial?.type || "Truck",
-      fuelType: initial?.fuelType ?? "DIESEL",
-      status: initial?.status ?? "ACTIVE",
-      currentDriverId: initial?.currentDriverId ?? null,
+      number: initial?.number ?? defaultFormValues.number,
+      type: initial?.type || defaultFormValues.type,
+      fuelType: initial?.fuelType ?? defaultFormValues.fuelType,
+      status: initial?.status ?? defaultFormValues.status,
+      currentDriverId: initial?.currentDriverId ?? defaultFormValues.currentDriverId,
     },
   });
 
@@ -60,13 +82,20 @@ export function VehicleForm({
       setMessage(result.error ?? "Unable to save vehicle.");
       return;
     }
+    if (embedded && onCreated) {
+      if ("number" in result.data) {
+        onCreated(result.data as VehicleRow);
+      }
+      reset(defaultFormValues);
+      return;
+    }
     router.push(`/vehicles/${result.data.id}`);
     router.refresh();
   });
 
   return (
-    <form onSubmit={submit} className="space-y-6">
-      <div className="grid max-w-2xl gap-4 rounded-xl border bg-white p-6 sm:grid-cols-2">
+    <form onSubmit={submit} className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Vehicle number" error={errors.number?.message}>
           <Input {...register("number")} placeholder="e.g. 3262" />
         </Field>
@@ -79,10 +108,14 @@ export function VehicleForm({
             name="fuelType"
             render={({ field }) => (
               <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {["DIESEL", "PETROL", "CNG", "ELECTRIC", "HYBRID"].map((value) => (
-                    <SelectItem key={value} value={value}>{value}</SelectItem>
+                    <SelectItem key={value} value={value}>
+                      {value}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -95,10 +128,14 @@ export function VehicleForm({
             name="status"
             render={({ field }) => (
               <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {["ACTIVE", "MAINTENANCE", "INACTIVE", "SOLD"].map((value) => (
-                    <SelectItem key={value} value={value}>{value}</SelectItem>
+                    <SelectItem key={value} value={value}>
+                      {value}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -115,11 +152,15 @@ export function VehicleForm({
                   value={field.value ?? "NONE"}
                   onValueChange={(value) => field.onChange(value === "NONE" ? null : value)}
                 >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="NONE">Unassigned</SelectItem>
                     {drivers.map((driver) => (
-                      <SelectItem key={driver.id} value={driver.id}>{driver.name}</SelectItem>
+                      <SelectItem key={driver.id} value={driver.id}>
+                        {driver.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -131,9 +172,23 @@ export function VehicleForm({
       {message ? <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{message}</p> : null}
       <div className="flex gap-2">
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Saving…" : "Save vehicle"}
+          {isSubmitting ? "Saving…" : embedded ? "Add vehicle" : "Save vehicle"}
         </Button>
-        <Button type="button" variant="outline" onClick={() => router.back()}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            if (onCancel) {
+              onCancel();
+              return;
+            }
+            if (embedded) {
+              reset(defaultFormValues);
+              return;
+            }
+            router.back();
+          }}
+        >
           Cancel
         </Button>
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { FileText, Route } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { LiveInvoiceData } from "@/types";
@@ -11,53 +12,48 @@ export type TripFormPageProps = Omit<TripEntryFormProps, "onChangeLiveData">;
 
 export function TripFormPage(props: TripFormPageProps) {
   const [liveData, setLiveData] = useState<LiveInvoiceData | null>(null);
-  const [activeTab, setActiveTab] = useState<"form" | "preview">("form");
+  const [activeTab, setActiveTab] = useState<"trip" | "preview">("trip");
   const handleLiveData = useCallback((data: LiveInvoiceData) => setLiveData(data), []);
 
   return (
-    <div className="mx-auto w-full max-w-[1600px]">
-      <div className="mb-4 grid grid-cols-2 gap-2 rounded-lg bg-slate-100 p-1 lg:hidden print:hidden">
+    <div className="mx-auto w-full max-w-[1400px]">
+      <div className="mb-4 grid grid-cols-2 gap-2 rounded-lg bg-slate-100 p-1 print:hidden">
         <Button
           type="button"
-          variant={activeTab === "form" ? "default" : "ghost"}
-          onClick={() => setActiveTab("form")}
+          variant={activeTab === "trip" ? "default" : "ghost"}
+          onClick={() => setActiveTab("trip")}
         >
-          Form
+          <Route className="h-4 w-4" />
+          Trip
         </Button>
         <Button
           type="button"
           variant={activeTab === "preview" ? "default" : "ghost"}
           onClick={() => setActiveTab("preview")}
         >
+          <FileText className="h-4 w-4" />
           Preview
         </Button>
       </div>
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(420px,0.92fr)]">
-        <section
-          className={cn(
-            "max-h-[calc(100vh-2rem)] overflow-y-auto pr-1 print:hidden",
-            activeTab !== "form" && "hidden lg:block"
-          )}
-        >
-          <TripEntryForm {...props} onChangeLiveData={handleLiveData} />
-        </section>
+      <section className={cn(activeTab !== "trip" && "hidden", "print:hidden")}>
+        <TripEntryForm {...props} onChangeLiveData={handleLiveData} />
+      </section>
 
-        <aside
-          className={cn(
-            "lg:sticky lg:top-4 print:static print:block",
-            activeTab !== "preview" && "hidden lg:block"
-          )}
-        >
-          {liveData ? (
-            <LiveInvoicePreview data={liveData} />
-          ) : (
-            <div className="grid aspect-[1/1.414] place-items-center rounded-xl border border-dashed border-slate-300 bg-white text-sm text-slate-500">
-              Preparing invoice preview…
-            </div>
-          )}
-        </aside>
-      </div>
+      <section
+        className={cn(
+          activeTab !== "preview" && "hidden print:block",
+          "min-h-[calc(100vh-10rem)] rounded-2xl bg-slate-100 p-4 sm:p-6 print:min-h-0 print:bg-white print:p-0"
+        )}
+      >
+        {liveData ? (
+          <LiveInvoicePreview data={liveData} fullScreen />
+        ) : (
+          <div className="grid min-h-[70vh] place-items-center rounded-xl border border-dashed border-slate-300 bg-white text-sm text-slate-500">
+            Fill the trip form first to see the invoice preview.
+          </div>
+        )}
+      </section>
     </div>
   );
 }

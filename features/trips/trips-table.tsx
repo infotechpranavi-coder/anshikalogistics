@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { calculatePendingLt } from "@/utils/calculations";
+import { calculateEntry } from "@/utils/calculations";
 
 export interface TripTableRow {
   id: string;
@@ -54,10 +54,17 @@ export interface TripsTableProps {
   onBulkDelete?: (ids: string[]) => Promise<boolean>;
 }
 
-const formatQty = (value: number) => {
-  const amount = Number(value) || 0;
-  return Number.isInteger(amount) ? String(amount) : amount.toFixed(2);
-};
+function tripDriverName(trip: TripTableRow) {
+  if (!trip.driver) return "—";
+  if (typeof trip.driver === "string") return trip.driver.trim() || "—";
+  return trip.driver.name?.trim() || "—";
+}
+
+function tripRoute(trip: TripTableRow) {
+  const from = trip.source?.trim() || "—";
+  const to = trip.destination?.trim() || "—";
+  return `${from} → ${to}`;
+}
 
 export function TripsTable({
   data,
@@ -106,65 +113,33 @@ export function TripsTable({
         header: "Date",
         cell: ({ row }) => formatDate(row.original.tripDate),
       },
-      { accessorKey: "source", header: "From" },
-      { accessorKey: "destination", header: "To" },
       {
-        accessorKey: "loadingKm",
-        header: "Loading KM",
-        cell: ({ row }) => formatQty(row.original.loadingKm),
+        id: "route",
+        header: "Route",
+        accessorFn: (row) => tripRoute(row),
+        cell: ({ row }) => (
+          <span className="font-medium text-slate-800">{tripRoute(row.original)}</span>
+        ),
       },
       {
-        accessorKey: "unloadingKm",
-        header: "Unloading KM",
-        cell: ({ row }) => formatQty(row.original.unloadingKm),
-      },
-      {
-        id: "loadedEmpty",
-        header: "Loaded empty",
-        accessorFn: (row) => (row.isEmpty || !row.isLoaded ? "Empty" : "Loaded"),
-      },
-      {
-        accessorKey: "distance",
-        header: "KM",
-        cell: ({ row }) => formatQty(row.original.distance),
-      },
-      {
-        accessorKey: "fuelRequired",
-        header: "Lt",
-        cell: ({ row }) => formatQty(row.original.fuelRequired),
-      },
-      {
-        accessorKey: "fuelFilled",
-        header: "Paid Lt",
-        cell: ({ row }) => formatQty(row.original.fuelFilled),
-      },
-      {
-        id: "pendingLt",
-        header: "Pending Lt",
-        cell: ({ row }) =>
-          formatQty(calculatePendingLt(row.original.fuelRequired, row.original.fuelFilled)),
+        id: "driver",
+        header: "Driver name",
+        accessorFn: (row) => tripDriverName(row),
+        cell: ({ row }) => tripDriverName(row.original),
       },
       {
         id: "entry",
         header: "Entry",
-        accessorFn: (row) => row.remarks?.trim() || "—",
-      },
-      {
-        accessorKey: "fuelCost",
-        header: "Desil Amt",
-        cell: ({ row }) => formatCurrency(row.original.fuelCost),
+        accessorFn: (row) => calculateEntry(row.distance, row.isLoaded, row.isEmpty),
+        cell: ({ row }) =>
+          calculateEntry(row.original.distance, row.original.isLoaded, row.original.isEmpty).toFixed(2),
       },
       {
         accessorKey: "grandTotal",
         header: "Final Amount",
-        cell: ({ row }) => formatCurrency(row.original.grandTotal),
-      },
-      {
-        accessorKey: "narration",
-        header: "Narration",
         cell: ({ row }) => (
-          <span className="max-w-48 truncate block" title={row.original.narration ?? ""}>
-            {row.original.narration || "—"}
+          <span className={`font-semibold ${row.original.grandTotal < 0 ? "text-red-600" : "text-slate-900"}`}>
+            {formatCurrency(row.original.grandTotal)}
           </span>
         ),
       },
@@ -338,7 +313,7 @@ export function TripsTable({
       ) : null}
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-        <table className="w-full min-w-350 text-sm">
+        <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
             {table.getHeaderGroups().map((group) => (
               <tr key={group.id}>

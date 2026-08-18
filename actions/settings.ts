@@ -27,6 +27,8 @@ export async function updateCompanySettings(input: CompanySettingsInput): Promis
     await prisma.company.update({ where: { id: user.companyId }, data: parsed.data });
     await createAuditLog({ action: "UPDATE", entity: "Company", entityId: user.companyId, details: "Updated company settings", userId: user.id, companyId: user.companyId });
     revalidatePath("/settings");
+    revalidatePath("/trips");
+    revalidatePath("/trips/new");
     return { success: true, data: { id: user.companyId } };
   } catch (error) {
     console.error("Update settings failed:", error);

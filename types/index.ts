@@ -79,6 +79,8 @@ export interface TripFormValues {
   dieselRate: number;
   mileage: number;
   fuelFilled: number;
+  acHours?: number;
+  acLitresPerHour?: number;
   toll: number;
   parking: number;
   food: number;
@@ -117,6 +119,9 @@ export interface LiveInvoiceData {
   fuelFilled: number;
   fuelRequired: number;
   fuelCost: number;
+  acHours?: number;
+  acLitresPerHour?: number;
+  acCharge?: number;
   toll: number;
   parking: number;
   food: number;
@@ -135,6 +140,13 @@ export interface LiveInvoiceData {
   extraExpenses?: { title: string; amount: number }[];
   signature?: string | null;
   upiId?: string | null;
+  tripNumber?: string;
+  isLoaded?: boolean;
+  isEmpty?: boolean;
+  bankName?: string | null;
+  bankAccount?: string | null;
+  bankIfsc?: string | null;
+  bankBranch?: string | null;
 }
 
 export const ROLE_PERMISSIONS: Record<Role, string[]> = {

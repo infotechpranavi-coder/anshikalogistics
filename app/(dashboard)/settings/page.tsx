@@ -1,4 +1,43 @@
-import { getCompanySettings,updateCompanySettings } from "@/actions/settings";
+import { getCompanySettings, updateCompanySettings } from "@/actions/settings";
 import { PageHeader } from "@/components/shared/page-header";
 import { SettingsForm } from "@/features/settings/settings-form";
-export default async function SettingsPage(){const company=(await getCompanySettings()).data;if(!company)return <p>Company settings are unavailable.</p>;return <div className="space-y-6"><PageHeader title="Settings" description="Configure company, invoice, banking, and regional preferences."/><SettingsForm initial={{name:company.name,logo:company.logo,address:company.address??"",city:company.city??"",state:company.state??"",pincode:company.pincode??"",country:company.country,gst:company.gst??"",phone:company.phone??"",email:company.email??"",website:company.website??"",invoicePrefix:company.invoicePrefix,invoiceStartingNumber:company.invoiceStartingNumber,currency:company.currency,timezone:company.timezone,signature:company.signature,bankName:company.bankName??"",bankAccount:company.bankAccount??"",bankIfsc:company.bankIfsc??"",upiId:company.upiId??""}} onSubmit={updateCompanySettings}/></div>}
+
+export default async function SettingsPage() {
+  const company = (await getCompanySettings()).data;
+  if (!company) return <p>Company settings are unavailable.</p>;
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Settings"
+        description="Add company address, contact, GST, and bank details. They appear on the invoice preview."
+      />
+      <SettingsForm
+        initial={{
+          name: company.name,
+          logo: company.logo,
+          address: company.address ?? "",
+          city: company.city ?? "",
+          state: company.state ?? "",
+          pincode: company.pincode ?? "",
+          country: company.country,
+          gst: company.gst ?? "",
+          phone: company.phone ?? "",
+          email: company.email ?? "",
+          website: company.website ?? "",
+          invoicePrefix: company.invoicePrefix,
+          invoiceStartingNumber: company.invoiceStartingNumber,
+          currency: company.currency,
+          timezone: company.timezone,
+          signature: company.signature,
+          bankName: company.bankName ?? "",
+          bankAccount: company.bankAccount ?? "",
+          bankIfsc: company.bankIfsc ?? "",
+          bankBranch: company.bankBranch ?? "",
+          upiId: company.upiId ?? "",
+        }}
+        onSubmit={updateCompanySettings}
+      />
+    </div>
+  );
+}

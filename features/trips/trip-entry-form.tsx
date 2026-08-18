@@ -14,10 +14,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { tripSchema, type TripInput } from "@/schemas";
 import { APP_LOGO } from "@/lib/brand";
-import { calculatePendingLt } from "@/utils/calculations";
+import {
+  calculateAcCharge,
+  calculateAcLitres,
+  calculateDieselAmount,
+  calculateEntry,
+  calculateFuelRequired,
+  calculateGrandTotal,
+  calculatePendingLt,
+  DEFAULT_AC_LITRES_PER_HOUR,
+  formatLtWithAc,
+} from "@/utils/calculations";
 import type { LiveInvoiceData, TripFormValues } from "@/types";
 
 type TripFields = Omit<TripInput, "tripDate"> & {
@@ -44,7 +53,10 @@ export interface TripEntryFormProps {
     fuelRequired?: number;
     fuelCost?: number;
     grandTotal?: number;
+    acHours?: number;
+    acLitresPerHour?: number;
     extraExpenses?: { title: string; amount: number }[];
+    tripNumber?: string;
   };
   company: {
     name: string;
@@ -56,6 +68,12 @@ export interface TripEntryFormProps {
     signature?: string | null;
     upiId?: string | null;
     invoicePrefix: string;
+    bankName?: string | null;
+    bankAccount?: string | null;
+    bankIfsc?: string | null;
+    bankBranch?: string | null;
+    city?: string | null;
+    state?: string | null;
   };
   nextInvoiceNumber: string;
   onSubmit: (data: TripInput & { status: string }) => Promise<void>;
@@ -111,11 +129,13 @@ export function TripEntryForm({
       isLoaded: defaultValues?.isLoaded ?? true,
       isEmpty: defaultValues?.isEmpty ?? false,
       remarks: defaultValues?.remarks ?? "",
-      dieselRate: defaultValues?.dieselRate ?? 0,
-      mileage: defaultValues?.mileage ?? 0,
+      dieselRate: defaultValues?.dieselRate ?? 100,
+      mileage: defaultValues?.mileage ?? 6,
       fuelFilled: defaultValues?.fuelFilled ?? 0,
       fuelRequired: defaultValues?.fuelRequired ?? 0,
       fuelCost: defaultValues?.fuelCost ?? 0,
+      acHours: defaultValues?.acHours ?? 0,
+      acLitresPerHour: defaultValues?.acLitresPerHour ?? DEFAULT_AC_LITRES_PER_HOUR,
       grandTotal: defaultValues?.grandTotal ?? 0,
       toll: 0,
       parking: 0,
@@ -139,10 +159,19 @@ export function TripEntryForm({
 
   const loadingKm = numberValue(useWatch({ control, name: "loadingKm" }));
   const unloadingKm = numberValue(useWatch({ control, name: "unloadingKm" }));
+  const distance = numberValue(useWatch({ control, name: "distance" }));
+  const mileage = numberValue(useWatch({ control, name: "mileage" }));
+  const dieselRate = numberValue(useWatch({ control, name: "dieselRate" }));
   const fuelRequired = numberValue(useWatch({ control, name: "fuelRequired" }));
   const fuelFilled = numberValue(useWatch({ control, name: "fuelFilled" }));
-  const pendingLt = calculatePendingLt(fuelRequired, fuelFilled);
+  const acHours = numberValue(useWatch({ control, name: "acHours" }));
+  const acLitresPerHour = numberValue(useWatch({ control, name: "acLitresPerHour" }));
+  const acLitres = calculateAcLitres(acHours, acLitresPerHour);
+  const pendingLt = calculatePendingLt(fuelRequired, fuelFilled, acLitres);
   const loadStatus = useWatch({ control, name: "isEmpty" }) ? "empty" : "loaded";
+  const entry = calculateEntry(distance, loadStatus === "loaded");
+  const acCharge = calculateAcCharge(acHours, acLitresPerHour, dieselRate);
+  const dieselAmt = calculateDieselAmount(pendingLt, dieselRate, acHours, acLitresPerHour);
   const values = watch();
   const selectedVehicle = vehicles.find((vehicle) => vehicle.id === values.vehicleId);
   const selectedDriver = drivers.find((d) => d.id === values.driverId) ?? null;
@@ -150,8 +179,7 @@ export function TripEntryForm({
     (item) => item.title?.trim() && numberValue(item.amount) > 0
   );
   const extraTotal = extraExpenses.reduce((sum, item) => sum + numberValue(item.amount), 0);
-  const dieselAmt = numberValue(values.fuelCost);
-  const finalAmount = dieselAmt + extraTotal;
+  const finalAmount = calculateGrandTotal(entry, dieselAmt, extraTotal);
 
   useEffect(() => {
     const km = Math.max(0, unloadingKm - loadingKm);
@@ -159,9 +187,19 @@ export function TripEntryForm({
   }, [loadingKm, unloadingKm, setValue]);
 
   useEffect(() => {
+    const lt = calculateFuelRequired(distance, mileage);
+    const pending = calculatePendingLt(lt, fuelFilled, calculateAcLitres(acHours, acLitresPerHour));
+    setValue("fuelRequired", lt, { shouldDirty: false });
+    setValue("fuelCost", calculateDieselAmount(pending, dieselRate, acHours, acLitresPerHour), {
+      shouldDirty: false,
+    });
+  }, [distance, mileage, dieselRate, fuelFilled, acHours, acLitresPerHour, setValue]);
+
+  useEffect(() => {
     setValue("grandTotal", finalAmount, { shouldDirty: false });
     setValue("miscExpense", extraTotal, { shouldDirty: false });
-  }, [extraTotal, finalAmount, setValue]);
+    setValue("remarks", entry.toFixed(2), { shouldDirty: false });
+  }, [entry, extraTotal, finalAmount, setValue]);
 
   useEffect(() => {
     onChangeLiveData?.({
@@ -183,11 +221,14 @@ export function TripEntryForm({
       loadingKm,
       unloadingKm,
       distance: numberValue(values.distance),
-      dieselRate: 0,
-      mileage: 0,
+      dieselRate,
+      mileage,
       fuelFilled,
       fuelRequired,
       fuelCost: dieselAmt,
+      acHours,
+      acLitresPerHour,
+      acCharge,
       toll: 0,
       parking: 0,
       food: 0,
@@ -198,15 +239,21 @@ export function TripEntryForm({
       expenseTotal: extraTotal,
       grandTotal: finalAmount,
       paidAmount: numberValue(values.paidAmount),
-      pendingAmount: Math.max(0, finalAmount - numberValue(values.paidAmount)),
+      pendingAmount: finalAmount - numberValue(values.paidAmount),
       voucherNumber: values.voucherNumber,
-      narration: values.narration,
       remarks: values.remarks,
       extraExpenses: (values.extraExpenses ?? []).filter(
         (item) => item.title?.trim() && numberValue(item.amount) > 0
       ),
       signature: company.signature,
       upiId: company.upiId,
+      tripNumber: defaultValues?.tripNumber,
+      isLoaded: loadStatus === "loaded",
+      isEmpty: loadStatus === "empty",
+      bankName: company.bankName,
+      bankAccount: company.bankAccount,
+      bankIfsc: company.bankIfsc,
+      bankBranch: company.bankBranch,
     });
   }, [
     company,
@@ -214,22 +261,28 @@ export function TripEntryForm({
     defaultValues?.owner,
     defaultValues?.vehicleNumber,
     defaultValues?.vehicleType,
+    defaultValues?.tripNumber,
+    defaultValues?.driverName,
     dieselAmt,
     extraTotal,
     finalAmount,
     fuelFilled,
     fuelRequired,
+    acHours,
+    acLitresPerHour,
+    acCharge,
     loadingKm,
     nextInvoiceNumber,
     onChangeLiveData,
     selectedVehicle,
     unloadingKm,
+    dieselRate,
+    mileage,
     values.destination,
     values.distance,
     values.driverId,
     values.driverPhone,
     values.extraExpenses,
-    values.narration,
     values.paidAmount,
     values.remarks,
     values.source,
@@ -243,9 +296,13 @@ export function TripEntryForm({
       ...values,
       status,
       distance: numberValue(values.distance),
+      dieselRate: numberValue(values.dieselRate),
+      mileage: numberValue(values.mileage),
       fuelRequired: numberValue(values.fuelRequired),
       fuelFilled: numberValue(values.fuelFilled),
       fuelCost: numberValue(values.fuelCost),
+      acHours: numberValue(values.acHours),
+      acLitresPerHour: numberValue(values.acLitresPerHour),
       grandTotal: numberValue(values.grandTotal),
       loadingKm: numberValue(values.loadingKm),
       unloadingKm: numberValue(values.unloadingKm),
@@ -421,9 +478,32 @@ export function TripEntryForm({
             />
           </div>
 
-          {/* Row 4: Lt, Paid Lt, Pending Lt */}
+          {/* Row 4: Mileage, Cost per Lt */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <NumberField
+              label="Mileage (km/l)"
+              name="mileage"
+              register={register}
+              error={errors.mileage?.message}
+            />
+            <NumberField
+              label="Cost per Lt"
+              name="dieselRate"
+              register={register}
+              error={errors.dieselRate?.message}
+            />
+          </div>
+
+          {/* Row 5: Lt, Paid Lt, Pending Lt */}
           <div className="grid gap-4 sm:grid-cols-3">
-            <NumberField label="Lt" name="fuelRequired" register={register} error={errors.fuelRequired?.message} />
+            <Field label="Lt">
+              <Input
+                value={formatLtWithAc(fuelRequired, acLitres)}
+                readOnly
+                tabIndex={-1}
+                className="bg-slate-50 font-medium text-slate-700"
+              />
+            </Field>
             <NumberField label="Paid Lt" name="fuelFilled" register={register} error={errors.fuelFilled?.message} />
             <Field label="Pending Lt">
               <Input
@@ -435,14 +515,55 @@ export function TripEntryForm({
             </Field>
           </div>
 
-          {/* Row 5: Entry, Desil Amt, Final Amount */}
+          {/* Row 6: AC usage hours, diesel per hour, AC charge */}
           <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="Entry" error={errors.remarks?.message}>
-              <Input {...register("remarks")} placeholder="Entry" />
+            <NumberField
+              label="AC usage hours"
+              name="acHours"
+              register={register}
+              error={errors.acHours?.message}
+            />
+            <NumberField
+              label="Diesel per hour (Lt)"
+              name="acLitresPerHour"
+              register={register}
+              error={errors.acLitresPerHour?.message}
+            />
+            <Field label="AC charge">
+              <Input
+                value={acCharge.toFixed(2)}
+                readOnly
+                tabIndex={-1}
+                className="bg-slate-50 font-medium text-slate-700"
+              />
             </Field>
-            <NumberField label="Desil Amt" name="fuelCost" register={register} error={errors.fuelCost?.message} />
+          </div>
+
+          {/* Row 7: Entry, Desil Amt, Final Amount */}
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field label="Entry">
+              <Input
+                value={entry.toFixed(2)}
+                readOnly
+                tabIndex={-1}
+                className="bg-slate-50 font-medium text-slate-700"
+              />
+            </Field>
+            <Field label="Desil Amt">
+              <Input
+                value={dieselAmt.toFixed(2)}
+                readOnly
+                tabIndex={-1}
+                className="bg-slate-50 font-medium text-slate-700"
+              />
+            </Field>
             <Field label="Final Amount">
-              <Input value={finalAmount} readOnly className="bg-slate-50 font-semibold text-slate-800" />
+              <Input
+                value={finalAmount.toFixed(2)}
+                readOnly
+                tabIndex={-1}
+                className={`bg-slate-50 font-semibold ${finalAmount < 0 ? "text-red-600" : "text-slate-800"}`}
+              />
             </Field>
           </div>
         </div>
@@ -496,11 +617,6 @@ export function TripEntryForm({
               Other expenses total: {extraTotal.toFixed(2)}
             </p>
           ) : null}
-
-          {/* Put narration inside the "Other" section */}
-          <Field label="Narration" error={errors.narration?.message}>
-            <Textarea {...register("narration")} rows={3} placeholder="Narration" />
-          </Field>
         </div>
       </section>
 

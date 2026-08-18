@@ -14,6 +14,18 @@ async function main() {
       data: {
         name: "Anshika Logistics",
         logo: "/anishka-logistics-logo.jpeg",
+        address:
+          "Fl.No- 07, Blgd no A/5 GR FLoor, Shree Datta Nagari Complex, Pipeline Road, Purna, Bhiwandi- 421302",
+        city: "Bhiwandi",
+        state: "Maharashtra",
+        pincode: "421302",
+        country: "India",
+        phone: "8452823542",
+        email: "anshikalogistics7@gmail.com",
+        gst: "27GUOPD3977F1Z5",
+        bankName: "YES BANK",
+        bankIfsc: "YESB0000077",
+        bankAccount: "007763200001514",
       },
     });
   }
@@ -21,16 +33,22 @@ async function main() {
   company ??= await prisma.company.create({
     data: {
       name: "Anshika Logistics",
-      address: "Transport Nagar",
-      city: "New Delhi",
-      state: "Delhi",
+      address:
+        "Fl.No- 07, Blgd no A/5 GR FLoor, Shree Datta Nagari Complex, Pipeline Road, Purna, Bhiwandi- 421302",
+      city: "Bhiwandi",
+      state: "Maharashtra",
+      pincode: "421302",
       country: "India",
-      phone: "9999999999",
-      email: "admin@fleetfuel.com",
+      phone: "8452823542",
+      email: "anshikalogistics7@gmail.com",
+      gst: "27GUOPD3977F1Z5",
       invoicePrefix: "INV",
       invoiceStartingNumber: 1,
-      upiId: "fleetfuel@upi",
+      upiId: "anshikalogistics@upi",
       logo: "/anishka-logistics-logo.jpeg",
+      bankName: "YES BANK",
+      bankIfsc: "YESB0000077",
+      bankAccount: "007763200001514",
     },
   });
 

@@ -75,6 +75,10 @@ function computedTripData(data: TripInput) {
     mileage: data.mileage,
     dieselRate: data.dieselRate,
     fuelFilled: data.fuelFilled,
+    isLoaded: data.isLoaded,
+    isEmpty: data.isEmpty,
+    acHours: data.acHours,
+    acLitresPerHour: data.acLitresPerHour,
     toll: data.toll,
     parking: data.parking,
     food: data.food,
@@ -85,10 +89,12 @@ function computedTripData(data: TripInput) {
     paidAmount: data.paidAmount,
   });
   const distance = data.distance && data.distance > 0 ? data.distance : totals.distance;
-  const fuelRequired = data.fuelRequired ?? totals.fuelRequired;
-  const fuelCost = data.fuelCost ?? totals.fuelCost;
+  const fuelRequired =
+    data.mileage > 0 ? totals.fuelRequired : (data.fuelRequired ?? totals.fuelRequired);
+  const fuelCost =
+    data.dieselRate > 0 ? totals.fuelCost : (data.fuelCost ?? totals.fuelCost);
   const expenseTotal = extraTotal || totals.expenseTotal;
-  const grandTotal = data.grandTotal ?? fuelCost + expenseTotal;
+  const grandTotal = totals.grandTotal;
   const { extraExpenses: _ignored, ...tripFields } = data;
   return {
     ...tripFields,
@@ -99,7 +105,7 @@ function computedTripData(data: TripInput) {
     miscExpense: extraTotal,
     expenseTotal,
     grandTotal,
-    pendingAmount: Math.max(0, grandTotal - (data.paidAmount || 0)),
+    pendingAmount: grandTotal - (data.paidAmount || 0),
   };
 }
 
@@ -399,6 +405,8 @@ export async function duplicateTrip(id: string): Promise<ActionResult<{ id: stri
         fuelFilled: source.fuelFilled,
         fuelRequired: source.fuelRequired,
         fuelCost: source.fuelCost,
+        acHours: source.acHours,
+        acLitresPerHour: source.acLitresPerHour,
         toll: source.toll,
         parking: source.parking,
         food: source.food,
@@ -528,6 +536,8 @@ const tripDetailSelect = {
   fuelFilled: true,
   fuelRequired: true,
   fuelCost: true,
+  acHours: true,
+  acLitresPerHour: true,
   toll: true,
   parking: true,
   food: true,

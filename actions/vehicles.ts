@@ -10,6 +10,24 @@ import type { ActionResult } from "@/types";
 
 const include = { currentDriver: { select: { id: true, name: true, phone: true } } } as const;
 
+const vehicleListSelect = {
+  id: true,
+  number: true,
+  type: true,
+  make: true,
+  model: true,
+  status: true,
+  fuelType: true,
+  mileage: true,
+  insuranceExpiry: true,
+  fitnessExpiry: true,
+  permitExpiry: true,
+  pollutionExpiry: true,
+  currentDriver: { select: { name: true } },
+} as const;
+
+export type VehicleListItem = Prisma.VehicleGetPayload<{ select: typeof vehicleListSelect }>;
+
 const BULK_DELETE_BATCH_SIZE = 50;
 const DELETE_TRANSACTION_OPTIONS = { maxWait: 10_000, timeout: 60_000 };
 
@@ -48,7 +66,7 @@ async function deleteRelatedTrips(
   await tx.trip.deleteMany({ where: { id: { in: tripIds }, companyId } });
 }
 
-export async function createVehicle(input: VehicleInput): Promise<ActionResult<{ id: string }>> {
+export async function createVehicle(input: VehicleInput): Promise<ActionResult<VehicleListItem>> {
   const user = await requireCompany();
   const parsed = vehicleSchema.safeParse(input);
   if (!parsed.success) return { success: false, error: "Please correct the vehicle details.", errors: parsed.error.flatten().fieldErrors as Record<string, string[]> };
@@ -57,10 +75,13 @@ export async function createVehicle(input: VehicleInput): Promise<ActionResult<{
       const driver = await prisma.driver.findFirst({ where: { id: parsed.data.currentDriverId, companyId: user.companyId }, select: { id: true } });
       if (!driver) return { success: false, error: "Selected driver was not found." };
     }
-    const vehicle = await prisma.vehicle.create({ data: { ...parsed.data, companyId: user.companyId } });
+    const vehicle = await prisma.vehicle.create({
+      data: { ...parsed.data, companyId: user.companyId },
+      select: vehicleListSelect,
+    });
     await createAuditLog({ action: "CREATE", entity: "Vehicle", entityId: vehicle.id, details: `Created vehicle ${vehicle.number}`, userId: user.id, companyId: user.companyId });
     revalidatePath("/vehicles");
-    return { success: true, data: { id: vehicle.id } };
+    return { success: true, data: vehicle };
   } catch (error) { return fail(error); }
 }
 
@@ -138,21 +159,7 @@ export async function getVehicles(options: { search?: string; status?: VehicleIn
   try {
     const data = await prisma.vehicle.findMany({
       where: { companyId: user.companyId, ...(options.status ? { status: options.status } : {}), ...(search ? { OR: [{ number: { contains: search, mode: "insensitive" } }, { make: { contains: search, mode: "insensitive" } }, { model: { contains: search, mode: "insensitive" } }] } : {}) },
-      select: {
-        id: true,
-        number: true,
-        type: true,
-        make: true,
-        model: true,
-        status: true,
-        fuelType: true,
-        mileage: true,
-        insuranceExpiry: true,
-        fitnessExpiry: true,
-        permitExpiry: true,
-        pollutionExpiry: true,
-        currentDriver: { select: { name: true } },
-      },
+      select: vehicleListSelect,
       orderBy: { number: "asc" },
     });
     return { success: true, data } satisfies ActionResult<typeof data>;

@@ -171,6 +171,7 @@ model Company {
   bankName             String?
   bankAccount          String?
   bankIfsc             String?
+  bankBranch           String?
   upiId                String?
   users                User[]
   vehicles             Vehicle[]
@@ -273,6 +274,8 @@ model Trip {
   fuelFilled      Float          @default(0)
   fuelRequired    Float          @default(0)
   fuelCost        Float          @default(0)
+  acHours         Float          @default(0)
+  acLitresPerHour Float          @default(2)
   toll            Float          @default(0)
   parking         Float          @default(0)
   food            Float          @default(0)

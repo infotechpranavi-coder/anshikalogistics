@@ -1,18 +1,77 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { formatCurrency, formatDate } from "@/lib/utils";
-import { APP_LOGO } from "@/lib/brand";
-import { calculatePendingLt } from "@/utils/calculations";
+import { useEffect, useState, type ReactNode } from "react";
+import {
+  amountInIndianWords,
+  formatBillDate,
+  formatCurrency,
+  formatNumber,
+} from "@/lib/utils";
+import { APP_LOGO, INVOICE_LETTERHEAD } from "@/lib/brand";
+import { calculateAcLitres, formatLtWithAc } from "@/utils/calculations";
 import { buildUpiQrPayload, generateQrDataUrl } from "@/lib/qrcode";
 import type { LiveInvoiceData } from "@/types";
 
 export interface LiveInvoicePreviewProps {
   data: LiveInvoiceData;
+  fullScreen?: boolean;
 }
 
-export function LiveInvoicePreview({ data }: LiveInvoicePreviewProps) {
+function money(value: number, always = false) {
+  if (!always && !value) return "";
+  return formatNumber(value);
+}
+
+function Cell({
+  children,
+  right,
+  strong,
+}: {
+  children: ReactNode;
+  right?: boolean;
+  strong?: boolean;
+}) {
+  return (
+    <td
+      className={`border border-neutral-400 px-1 py-2 ${right ? "text-right" : "text-center"} ${strong ? "font-semibold" : ""}`}
+    >
+      {children}
+    </td>
+  );
+}
+
+export function LiveInvoicePreview({ data, fullScreen = false }: LiveInvoicePreviewProps) {
   const [qrUrl, setQrUrl] = useState<string | null>(null);
+  const extras = (data.extraExpenses ?? []).filter((item) => item.title.trim());
+  const acLitres = calculateAcLitres(data.acHours ?? 0, data.acLitresPerHour);
+  const hasAc = (data.acHours ?? 0) > 0 || (data.acCharge ?? 0) !== 0;
+  const entry = Number.isFinite(Number(data.remarks)) ? Number(data.remarks) : 0;
+  const dieselAmt = data.fuelCost;
+  const extraTotal = extras.reduce((sum, item) => sum + item.amount, 0);
+  const acCharge = data.acCharge ?? 0;
+  const subTotal = dieselAmt + extraTotal;
+  const totalFreight = data.grandTotal;
+  const billTo = data.owner?.trim() || data.driverName || "—";
+  const lrNo = data.tripNumber || data.invoiceNumber;
+  const temp = data.isEmpty ? "Empty" : "Loaded";
+
+  const headers = [
+    "Sr No.",
+    "LR No",
+    "Lr Date",
+    "Truck No",
+    "From City",
+    "To City",
+    "Temp.",
+    "KM",
+    "Lt",
+    "Entry",
+    "Desil Amt",
+    ...(hasAc ? ["AC Charge"] : []),
+    ...extras.map((item) => item.title),
+    "Sub Total",
+    "Total Freight",
+  ];
 
   useEffect(() => {
     let cancelled = false;
@@ -25,7 +84,7 @@ export function LiveInvoicePreview({ data }: LiveInvoicePreviewProps) {
         const payload = buildUpiQrPayload({
           upiId: data.upiId,
           name: data.companyName,
-          amount: data.pendingAmount > 0 ? data.pendingAmount : data.grandTotal,
+          amount: data.grandTotal,
           note: data.invoiceNumber,
         });
         const url = await generateQrDataUrl(payload, { width: 128 });
@@ -38,194 +97,213 @@ export function LiveInvoicePreview({ data }: LiveInvoicePreviewProps) {
     return () => {
       cancelled = true;
     };
-  }, [
-    data.upiId,
-    data.companyName,
-    data.pendingAmount,
-    data.grandTotal,
-    data.invoiceNumber,
-  ]);
+  }, [data.upiId, data.companyName, data.grandTotal, data.invoiceNumber]);
 
   return (
-    <article className="invoice-preview mx-auto aspect-[1/1.414] w-full max-w-190 overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-900 shadow-lg print:aspect-auto print:max-w-none print:rounded-none print:border-0 print:shadow-none">
-      <div className="flex h-full flex-col p-6 sm:p-8">
-        <header className="flex items-start justify-between gap-6 border-b-2 border-slate-800 pb-5">
-          <div className="flex items-center gap-4">
-            {/* Local brand mark from /public or company settings */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={data.companyLogo || APP_LOGO}
-              alt={`${data.companyName} logo`}
-              className="h-16 w-auto max-w-28 rounded-lg object-contain"
-            />
-            <div>
-              <h1 className="text-xl font-bold tracking-tight">{data.companyName}</h1>
-              {data.companyAddress && (
-                <p className="mt-1 max-w-sm text-xs text-slate-500">{data.companyAddress}</p>
+    <article
+      className={
+        fullScreen
+          ? "invoice-preview mx-auto w-full max-w-[1100px] overflow-x-auto bg-white text-black shadow-lg print:max-w-none print:shadow-none"
+          : "invoice-preview mx-auto w-full max-w-190 overflow-x-auto bg-white text-black shadow-lg print:max-w-none print:shadow-none"
+      }
+    >
+      <div className="border border-black p-3 sm:p-4">
+        <p className="text-center text-[11px] font-medium">
+          {INVOICE_LETTERHEAD.jurisdiction}
+        </p>
+
+        <header className="mt-1 grid grid-cols-[88px_1fr] items-start gap-3 sm:grid-cols-[110px_1fr]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={data.companyLogo || APP_LOGO}
+            alt={`${data.companyName || INVOICE_LETTERHEAD.name} logo`}
+            className="h-16 w-20 object-contain sm:h-20 sm:w-24"
+          />
+          <div className="text-center">
+            <h1 className="font-serif text-2xl font-bold uppercase tracking-wide text-[#b45309] sm:text-4xl">
+              {data.companyName || INVOICE_LETTERHEAD.name}
+            </h1>
+            <p className="mt-1 text-[11px] leading-4">
+              {data.companyAddress || INVOICE_LETTERHEAD.address}
+            </p>
+            <p className="text-[11px] leading-4">
+              {data.companyPhone || data.companyEmail ? (
+                <>
+                  {data.companyPhone ? `Mob : ${data.companyPhone}` : null}
+                  {data.companyPhone && data.companyEmail ? "  " : null}
+                  {data.companyEmail ? `Email : ${data.companyEmail}` : null}
+                </>
+              ) : (
+                <>
+                  Mob : {INVOICE_LETTERHEAD.phone} Email : {INVOICE_LETTERHEAD.email}
+                </>
               )}
-              <p className="mt-1 text-xs text-slate-500">
-                {[data.companyPhone, data.companyEmail].filter(Boolean).join(" · ")}
+            </p>
+            {(data.companyGst || INVOICE_LETTERHEAD.gst) ? (
+              <p className="text-[11px] font-semibold">
+                GSTNO. : {data.companyGst || INVOICE_LETTERHEAD.gst}
               </p>
-              {data.companyGst && <p className="text-xs text-slate-500">GST: {data.companyGst}</p>}
-            </div>
-          </div>
-          <div className="text-right">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Invoice</p>
-            <p className="mt-1 text-lg font-bold">{data.invoiceNumber}</p>
-            <p className="text-xs text-slate-500">{formatDate(data.tripDate, "long")}</p>
+            ) : null}
           </div>
         </header>
 
-        <section className="grid grid-cols-2 gap-4 border-b border-slate-200 py-4 text-xs">
-          <div>
-            <p className="font-semibold uppercase tracking-wide text-slate-400">Vehicle</p>
-            <p className="mt-1 text-sm font-semibold">{data.vehicleNumber || "—"}</p>
-            <p className="text-slate-500">
-              {[data.vehicleType, data.owner].filter(Boolean).join(" · ") || "—"}
-            </p>
-          </div>
-          <div>
-            <p className="font-semibold uppercase tracking-wide text-slate-400">Driver</p>
-            <p className="mt-1 text-sm font-semibold">{data.driverName || "—"}</p>
-            <p className="text-slate-500">{data.driverPhone || "—"}</p>
-          </div>
-        </section>
-
-        <section className="border-b border-slate-200 py-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Route</p>
-          <div className="mt-2 flex items-center gap-3 text-sm font-semibold">
-            <span className="min-w-0 flex-1 truncate">{data.source || "Source"}</span>
-            <span className="text-slate-400">→</span>
-            <span className="min-w-0 flex-1 truncate text-right">{data.destination || "Destination"}</span>
-          </div>
-        </section>
-
-        <div className="grid grid-cols-2 gap-5 py-4">
-          <InvoiceTable
-            title="Distance"
-            rows={[
-              ["Loading KM", `${data.loadingKm.toFixed(2)} km`],
-              ["Unloading KM", `${data.unloadingKm.toFixed(2)} km`],
-              ["KM", `${data.distance.toFixed(2)} km`],
-            ]}
-          />
-          <InvoiceTable
-            title="Fuel"
-            rows={[
-              ["Lt", `${data.fuelRequired.toFixed(2)} l`],
-              ["Paid Lt", `${data.fuelFilled.toFixed(2)} l`],
-              ["Pending Lt", `${calculatePendingLt(data.fuelRequired, data.fuelFilled).toFixed(2)} l`],
-              ["Desil Amt", formatCurrency(data.fuelCost)],
-            ]}
-          />
+        <div className="relative mt-3 border border-neutral-400 py-1 text-center">
+          <p className="text-base font-bold">Invoice</p>
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold">
+            Original
+          </span>
         </div>
 
-        <section className="border-t border-slate-200 pt-4">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Charges</p>
-          <div className="space-y-1 text-xs">
-            <AmountRow label="Desil Amt" value={data.fuelCost} />
-            {(data.extraExpenses ?? []).map((item) => (
-              <AmountRow key={`${item.title}-${item.amount}`} label={item.title} value={item.amount} />
-            ))}
+        <section className="mt-0 grid grid-cols-1 border-x border-b border-neutral-400 text-[11px] sm:grid-cols-[1.4fr_0.9fr]">
+          <div className="space-y-1 p-3">
+            <p className="font-semibold">To,</p>
+            <p className="text-sm font-bold uppercase">{billTo}</p>
+            {data.driverPhone ? <p>M : {data.driverPhone}</p> : null}
+            {data.vehicleType ? <p>{data.vehicleType}</p> : null}
           </div>
-        </section>
-
-        <section className="mt-4 grid grid-cols-[1fr_auto] gap-8 border-t-2 border-slate-800 pt-4">
-          <div className="flex items-end gap-4">
-            {data.upiId &&
-              (qrUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={qrUrl}
-                  alt="UPI payment QR"
-                  className="h-16 w-16 rounded border border-slate-200"
-                />
-              ) : (
-                <div className="grid h-16 w-16 place-items-center border-2 border-dashed border-slate-300 text-center text-[10px] font-bold text-slate-500">
-                  UPI QR
-                </div>
-              ))}
-            {data.upiId && (
-              <p className="pb-1 text-[10px] text-slate-500">Pay to {data.upiId}</p>
-            )}
-          </div>
-          <div className="w-52 space-y-1 text-xs">
-            <AmountRow label="Final Amount" value={data.grandTotal} strong />
-            <AmountRow label="Paid" value={data.paidAmount} />
-            <AmountRow label="Pending" value={data.pendingAmount} strong />
-          </div>
-        </section>
-
-        <footer className="mt-auto grid grid-cols-2 items-end gap-8 pt-6 text-[10px] text-slate-500">
-          <div>
-            {data.narration && (
-              <p>
-                <span className="font-semibold">Narration:</span> {data.narration}
-              </p>
-            )}
-            {data.remarks && (
-              <p>
-                <span className="font-semibold">Entry:</span> {data.remarks}
-              </p>
-            )}
-            <p className="mt-2">Thank you for your business.</p>
-          </div>
-          <div className="text-right">
-            {data.signature && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={data.signature}
-                alt="Authorized signature"
-                className="ml-auto h-10 object-contain"
-              />
-            )}
-            <div className="ml-auto mt-1 w-32 border-t border-slate-400 pt-1">
-              Authorized signature
+          <div className="border-t border-neutral-400 p-3 sm:border-l sm:border-t-0">
+            <div className="space-y-1 font-semibold">
+              <p>BILL NO : {data.invoiceNumber}</p>
+              <p>BILL DATE : {formatBillDate(data.tripDate)}</p>
+              <p>HSN Code : 996511</p>
             </div>
           </div>
-        </footer>
+        </section>
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-max border-collapse border border-neutral-400 text-[10px]">
+            <thead>
+              <tr className="bg-neutral-200 text-center font-semibold">
+                {headers.map((heading) => (
+                  <th key={heading} className="whitespace-nowrap border border-neutral-400 px-1.5 py-1.5">
+                    {heading}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="align-top">
+                <Cell>1</Cell>
+                <Cell>{lrNo}</Cell>
+                <Cell>{formatBillDate(data.tripDate)}</Cell>
+                <Cell strong>{data.vehicleNumber || "—"}</Cell>
+                <Cell>{data.source || "—"}</Cell>
+                <Cell>{data.destination || "—"}</Cell>
+                <Cell>{temp}</Cell>
+                <Cell>{formatNumber(data.distance)}</Cell>
+                <Cell>{formatLtWithAc(data.fuelRequired, acLitres)}</Cell>
+                <Cell right>{money(entry, true)}</Cell>
+                <Cell right>{money(dieselAmt, true)}</Cell>
+                {hasAc ? <Cell right>{money(acCharge, true)}</Cell> : null}
+                {extras.map((item) => (
+                  <Cell key={`${item.title}-${item.amount}`} right>
+                    {money(item.amount, true)}
+                  </Cell>
+                ))}
+                <Cell right strong>
+                  {money(subTotal, true)}
+                </Cell>
+                <Cell right strong>
+                  {money(totalFreight, true)}
+                </Cell>
+              </tr>
+              {Array.from({ length: 5 }).map((_, index) => (
+                <tr key={index}>
+                  {headers.map((heading) => (
+                    <td key={heading} className="h-6 border border-neutral-400" />
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <section className="grid grid-cols-1 border-x border-b border-neutral-400 text-[11px] sm:grid-cols-[1.4fr_0.9fr]">
+          <div className="p-3">
+            <p>
+              <span className="font-bold">Total Amount In Words :</span>{" "}
+              {amountInIndianWords(totalFreight)}
+            </p>
+          </div>
+          <div className="border-t border-neutral-400 sm:border-l sm:border-t-0">
+            <div className="flex justify-between border-b border-neutral-400 px-3 py-1.5">
+              <span className="font-semibold">Sub Total</span>
+              <span>{formatCurrency(subTotal)}</span>
+            </div>
+            <div className="h-6 border-b border-neutral-400" />
+            <div className="flex justify-between bg-neutral-200 px-3 py-1.5 font-bold">
+              <span>Grand Total</span>
+              <span>{formatCurrency(totalFreight)}</span>
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-0 grid grid-cols-1 gap-4 border-x border-b border-neutral-400 p-3 text-[11px] sm:grid-cols-[1.3fr_0.9fr]">
+          <div>
+            <div className="border border-neutral-400">
+              <div className="grid grid-cols-[120px_1fr] border-b border-neutral-400">
+                <p className="border-r border-neutral-400 px-2 py-1 font-bold text-[#b45309]">
+                  Bank Name :
+                </p>
+                <p className="px-2 py-1 font-semibold">{data.bankName || "—"}</p>
+              </div>
+              <div className="grid grid-cols-[120px_1fr] border-b border-neutral-400">
+                <p className="border-r border-neutral-400 px-2 py-1 font-bold text-[#b45309]">
+                  Bank IFSC Code :
+                </p>
+                <p className="px-2 py-1 font-semibold">{data.bankIfsc || "—"}</p>
+              </div>
+              <div className="grid grid-cols-[120px_1fr] border-b border-neutral-400">
+                <p className="border-r border-neutral-400 px-2 py-1 font-bold text-[#b45309]">
+                  Bank A/c No:
+                </p>
+                <p className="px-2 py-1 font-semibold">{data.bankAccount || "—"}</p>
+              </div>
+              <div className="grid grid-cols-[120px_1fr]">
+                <p className="border-r border-neutral-400 px-2 py-1 font-bold text-[#b45309]">
+                  Bank Branch :
+                </p>
+                <p className="px-2 py-1 font-semibold">{data.bankBranch || "—"}</p>
+              </div>
+            </div>
+            <div className="mt-3">
+              <p className="font-bold underline">Terms &amp; Condition</p>
+              <p>1. Difference if any may be notified within 5 days of receipt.</p>
+              <p>2. Please pay your bill amount within 15 days of receipt.</p>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-end justify-between text-right">
+            {qrUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={qrUrl} alt="UPI QR" className="h-20 w-20 border border-neutral-400" />
+            ) : data.upiId ? (
+              <div className="grid h-20 w-20 place-items-center border border-dashed border-neutral-400 text-[10px] font-semibold text-neutral-500">
+                UPI QR
+              </div>
+            ) : (
+              <div />
+            )}
+            <div className="mt-4">
+              <p className="font-serif font-bold text-[#b45309]">
+                For - {data.companyName || INVOICE_LETTERHEAD.name}
+              </p>
+              {data.signature ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={data.signature}
+                  alt="Authorised signatory"
+                  className="ml-auto mt-2 h-10 object-contain"
+                />
+              ) : (
+                <div className="mt-8" />
+              )}
+              <p className="mt-2 text-[11px]">Authorised Signatory</p>
+            </div>
+          </div>
+        </section>
       </div>
     </article>
-  );
-}
-
-function InvoiceTable({ title, rows }: { title: string; rows: Array<[string, string]> }) {
-  return (
-    <section>
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{title}</p>
-      <div className="overflow-hidden rounded-md border border-slate-200">
-        {rows.map(([label, value]) => (
-          <div
-            key={label}
-            className="flex justify-between border-b border-slate-100 px-2 py-1.5 text-[11px] last:border-0"
-          >
-            <span className="text-slate-500">{label}</span>
-            <span className="font-medium">{value}</span>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function AmountRow({
-  label,
-  value,
-  strong,
-  muted,
-}: {
-  label: string;
-  value: number;
-  strong?: boolean;
-  muted?: boolean;
-}) {
-  return (
-    <div
-      className={`flex justify-between gap-6 ${strong ? "text-sm font-bold" : ""} ${muted ? "text-slate-400" : ""}`}
-    >
-      <span>{label}</span>
-      <span>{formatCurrency(value)}</span>
-    </div>
   );
 }
 

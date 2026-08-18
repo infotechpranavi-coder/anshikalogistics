@@ -7,6 +7,7 @@ import {
   FileText,
   Gauge,
   Map,
+  Settings,
   Users,
   X,
 } from "lucide-react";
@@ -22,6 +23,7 @@ const navigation = [
   { name: "Vehicles", href: "/vehicles", icon: Car },
   { name: "Drivers", href: "/drivers", icon: Users },
   { name: "Invoices", href: "/invoices", icon: FileText },
+  { name: "Settings", href: "/settings", icon: Settings },
 ] as const;
 
 interface SidebarProps {
