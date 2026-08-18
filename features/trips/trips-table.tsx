@@ -155,11 +155,6 @@ export function TripsTable({
         cell: ({ row }) => formatCurrency(row.original.fuelCost),
       },
       {
-        accessorKey: "voucherNumber",
-        header: "Voucher",
-        cell: ({ row }) => row.original.voucherNumber || "—",
-      },
-      {
         accessorKey: "grandTotal",
         header: "Final Amount",
         cell: ({ row }) => formatCurrency(row.original.grandTotal),

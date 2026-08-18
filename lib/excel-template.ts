@@ -11,7 +11,6 @@ export const DIESEL_EXCEL_HEADERS = [
   "Pending Lt",
   "Entry",
   "Desil Amt",
-  "Voucher",
   "Final Amount",
   "Narration",
 ] as const;

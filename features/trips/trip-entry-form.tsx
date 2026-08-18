@@ -353,9 +353,6 @@ export function TripEntryForm({
             <Input {...register("remarks")} placeholder="Entry" />
           </Field>
           <NumberField label="Desil Amt" name="fuelCost" register={register} error={errors.fuelCost?.message} />
-          <Field label="Voucher" error={errors.voucherNumber?.message}>
-            <Input {...register("voucherNumber")} placeholder="Voucher" />
-          </Field>
           <Field label="Final Amount">
             <Input value={finalAmount} readOnly className="bg-slate-50 font-semibold text-slate-800" />
           </Field>

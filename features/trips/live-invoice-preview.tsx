@@ -127,12 +127,6 @@ export function LiveInvoicePreview({ data }: LiveInvoicePreviewProps) {
             {(data.extraExpenses ?? []).map((item) => (
               <AmountRow key={`${item.title}-${item.amount}`} label={item.title} value={item.amount} />
             ))}
-            {data.voucherNumber ? (
-              <div className="flex justify-between gap-6">
-                <span>Voucher</span>
-                <span className="font-medium">{data.voucherNumber}</span>
-              </div>
-            ) : null}
           </div>
         </section>
 

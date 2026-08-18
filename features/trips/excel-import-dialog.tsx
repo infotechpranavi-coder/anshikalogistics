@@ -114,7 +114,7 @@ export function ExcelImportDialog() {
           <DialogDescription className="text-slate-600">
             Use the same format as <span className="font-medium">Vehical Disel Expance</span>: one
             sheet per vehicle, with Date, From, To, Loading KM, Unloading KM, Loaded empty, KM, Lt,
-            Paid Lt, Pending Lt, Entry, Desil Amt, Voucher, Final Amount, and Narration.
+            Paid Lt, Pending Lt, Entry, Desil Amt, Final Amount, and Narration.
           </DialogDescription>
         </DialogHeader>
 
