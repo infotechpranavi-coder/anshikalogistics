@@ -78,6 +78,7 @@ const numberValue = (value: unknown) => {
 
 export function TripEntryForm({
   vehicles,
+  drivers = [],
   defaultValues,
   company,
   nextInvoiceNumber,
@@ -290,76 +291,156 @@ export function TripEntryForm({
           <h2 className="text-base font-semibold tracking-tight text-slate-900">Trip details</h2>
           <p className="mt-0.5 text-xs text-slate-500">Same columns as the vehicle diesel expense sheet</p>
         </div>
-        <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Vehicle" error={errors.vehicleId?.message}>
-            <Controller
-              control={control}
-              name="vehicleId"
-              render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger><SelectValue placeholder="Select vehicle" /></SelectTrigger>
-                  <SelectContent>
-                    {vehicles.map((vehicle) => (
-                      <SelectItem key={vehicle.id} value={vehicle.id}>{vehicle.number}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-          </Field>
-          <Field label="Date" error={errors.tripDate?.message}>
-            <Input type="date" {...register("tripDate")} />
-          </Field>
-          <Field label="From" error={errors.source?.message}>
-            <Input {...register("source")} placeholder="From" />
-          </Field>
-          <Field label="To" error={errors.destination?.message}>
-            <Input {...register("destination")} placeholder="To" />
-          </Field>
-          <NumberField label="Loading KM" name="loadingKm" register={register} error={errors.loadingKm?.message} />
-          <NumberField label="Unloading KM" name="unloadingKm" register={register} error={errors.unloadingKm?.message} />
-          <Field label="Loaded empty">
-            <Controller
-              control={control}
-              name="isEmpty"
-              render={({ field }) => (
-                <Select
-                  value={loadStatus}
-                  onValueChange={(value) => {
-                    field.onChange(value === "empty");
-                    setValue("isLoaded", value === "loaded");
+        <div className="space-y-4 p-5">
+          {/* Row 1: Date, Vehicle, Driver */}
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field label="Date" error={errors.tripDate?.message}>
+              <Input type="date" {...register("tripDate")} />
+            </Field>
+
+            <Field label="Vehicle" error={errors.vehicleId?.message}>
+              <Controller
+                control={control}
+                name="vehicleId"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select vehicle" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {vehicles.map((vehicle) => (
+                        <SelectItem key={vehicle.id} value={vehicle.id}>
+                          {vehicle.number}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </Field>
+
+            <Field label="Driver">
+              {drivers.length ? (
+                <Controller
+                  control={control}
+                  name="driverId"
+                  render={({ field }) => {
+                    const currentId = (field.value ?? null) as string | null;
+                    return (
+                      <Select
+                        value={currentId ?? "NONE"}
+                        onValueChange={(value) => {
+                          const picked = value === "NONE" ? null : value;
+                          field.onChange(picked);
+
+                          const d = drivers.find((x) => x.id === picked);
+                          setValue("driverPhone", d?.phone ?? "");
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select driver" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="NONE">None</SelectItem>
+                          {drivers.map((d) => (
+                            <SelectItem key={d.id} value={d.id}>
+                              {d.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    );
                   }}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="loaded">Loaded</SelectItem>
-                    <SelectItem value="empty">Empty</SelectItem>
-                  </SelectContent>
-                </Select>
+                />
+              ) : (
+                <Input
+                  value={defaultValues?.driverName ?? ""}
+                  readOnly
+                  tabIndex={-1}
+                  className="bg-slate-50"
+                />
               )}
+            </Field>
+          </div>
+
+          {/* Row 2: From, To */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="From" error={errors.source?.message}>
+              <Input {...register("source")} placeholder="From" />
+            </Field>
+            <Field label="To" error={errors.destination?.message}>
+              <Input {...register("destination")} placeholder="To" />
+            </Field>
+          </div>
+
+          {/* Row 3: Loaded, Loading KM, Unloading KM, KM */}
+          <div className="grid gap-4 sm:grid-cols-4">
+            <Field label="Loaded empty">
+              <Controller
+                control={control}
+                name="isEmpty"
+                render={({ field }) => (
+                  <Select
+                    value={loadStatus}
+                    onValueChange={(value) => {
+                      field.onChange(value === "empty");
+                      setValue("isLoaded", value === "loaded");
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="loaded">Loaded</SelectItem>
+                      <SelectItem value="empty">Empty</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </Field>
+
+            <NumberField
+              label="Loading KM"
+              name="loadingKm"
+              register={register}
+              error={errors.loadingKm?.message}
             />
-          </Field>
-          <NumberField label="KM" name="distance" register={register} error={errors.distance?.message} />
-          <NumberField label="Lt" name="fuelRequired" register={register} error={errors.fuelRequired?.message} />
-          <NumberField label="Paid Lt" name="fuelFilled" register={register} error={errors.fuelFilled?.message} />
-          <Field label="Pending Lt">
-            <Input
-              value={pendingLt.toFixed(2)}
-              readOnly
-              tabIndex={-1}
-              className="bg-slate-50 font-medium text-slate-700"
+            <NumberField
+              label="Unloading KM"
+              name="unloadingKm"
+              register={register}
+              error={errors.unloadingKm?.message}
             />
-          </Field>
-          <Field label="Entry" error={errors.remarks?.message}>
-            <Input {...register("remarks")} placeholder="Entry" />
-          </Field>
-          <NumberField label="Desil Amt" name="fuelCost" register={register} error={errors.fuelCost?.message} />
-          <Field label="Final Amount">
-            <Input value={finalAmount} readOnly className="bg-slate-50 font-semibold text-slate-800" />
-          </Field>
-          <div className="sm:col-span-2 lg:col-span-3">
-            <Field label="Narration" error={errors.narration?.message}>
-              <Textarea {...register("narration")} rows={3} placeholder="Narration" />
+            <NumberField
+              label="KM"
+              name="distance"
+              register={register}
+              error={errors.distance?.message}
+            />
+          </div>
+
+          {/* Row 4: Lt, Paid Lt, Pending Lt */}
+          <div className="grid gap-4 sm:grid-cols-3">
+            <NumberField label="Lt" name="fuelRequired" register={register} error={errors.fuelRequired?.message} />
+            <NumberField label="Paid Lt" name="fuelFilled" register={register} error={errors.fuelFilled?.message} />
+            <Field label="Pending Lt">
+              <Input
+                value={pendingLt.toFixed(2)}
+                readOnly
+                tabIndex={-1}
+                className="bg-slate-50 font-medium text-slate-700"
+              />
+            </Field>
+          </div>
+
+          {/* Row 5: Entry, Desil Amt, Final Amount */}
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field label="Entry" error={errors.remarks?.message}>
+              <Input {...register("remarks")} placeholder="Entry" />
+            </Field>
+            <NumberField label="Desil Amt" name="fuelCost" register={register} error={errors.fuelCost?.message} />
+            <Field label="Final Amount">
+              <Input value={finalAmount} readOnly className="bg-slate-50 font-semibold text-slate-800" />
             </Field>
           </div>
         </div>
@@ -413,6 +494,11 @@ export function TripEntryForm({
               Other expenses total: {extraTotal.toFixed(2)}
             </p>
           ) : null}
+
+          {/* Put narration inside the "Other" section */}
+          <Field label="Narration" error={errors.narration?.message}>
+            <Textarea {...register("narration")} rows={3} placeholder="Narration" />
+          </Field>
         </div>
       </section>
 
