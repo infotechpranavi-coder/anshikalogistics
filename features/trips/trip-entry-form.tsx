@@ -572,7 +572,35 @@ export function TripEntryForm({
             </Field>
           </div>
 
-          {/* Row 6: AC usage hours, diesel per hour, total AC diesel, AC charge */}
+          {/* Row 6: Entry, Desil Amt, Final Amount */}
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field label="Entry">
+              <Input
+                value={entry.toFixed(2)}
+                readOnly
+                tabIndex={-1}
+                className="bg-slate-50 font-medium text-slate-700"
+              />
+            </Field>
+            <Field label="Desil Amt">
+              <Input
+                value={dieselAmt.toFixed(2)}
+                readOnly
+                tabIndex={-1}
+                className="bg-slate-50 font-medium text-slate-700"
+              />
+            </Field>
+            <Field label="Final Amount">
+              <Input
+                value={finalAmount.toFixed(2)}
+                readOnly
+                tabIndex={-1}
+                className={`bg-slate-50 font-semibold ${finalAmount < 0 ? "text-red-600" : "text-slate-800"}`}
+              />
+            </Field>
+          </div>
+
+          {/* Row 7: AC usage hours, diesel per hour, total AC diesel, AC charge */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <NumberField
               label="AC usage hours"
@@ -600,34 +628,6 @@ export function TripEntryForm({
                 readOnly
                 tabIndex={-1}
                 className="bg-slate-50 font-medium text-slate-700"
-              />
-            </Field>
-          </div>
-
-          {/* Row 7: Entry, Desil Amt, Final Amount */}
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="Entry">
-              <Input
-                value={entry.toFixed(2)}
-                readOnly
-                tabIndex={-1}
-                className="bg-slate-50 font-medium text-slate-700"
-              />
-            </Field>
-            <Field label="Desil Amt">
-              <Input
-                value={dieselAmt.toFixed(2)}
-                readOnly
-                tabIndex={-1}
-                className="bg-slate-50 font-medium text-slate-700"
-              />
-            </Field>
-            <Field label="Final Amount">
-              <Input
-                value={finalAmount.toFixed(2)}
-                readOnly
-                tabIndex={-1}
-                className={`bg-slate-50 font-semibold ${finalAmount < 0 ? "text-red-600" : "text-slate-800"}`}
               />
             </Field>
           </div>
