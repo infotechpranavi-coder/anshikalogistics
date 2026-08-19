@@ -82,7 +82,7 @@ export default async function EditTripPage({
     if (!invoice.success || !invoice.data) {
       throw new Error(invoice.error ?? "Unable to generate the invoice.");
     }
-    return { ...invoice.data, tripId: id };
+    return { invoiceId: invoice.data.id, invoiceNumber: invoice.data.invoiceNumber, tripId: id };
   }
 
   return (

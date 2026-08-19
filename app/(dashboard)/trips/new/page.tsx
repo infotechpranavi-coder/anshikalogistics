@@ -70,7 +70,7 @@ export default async function NewTripPage() {
     if (!invoice.success || !invoice.data) {
       throw new Error(invoice.error ?? "Unable to generate the invoice.");
     }
-    return { ...invoice.data, tripId: result.data.id };
+    return { invoiceId: invoice.data.id, invoiceNumber: invoice.data.invoiceNumber, tripId: result.data.id };
   }
 
   return (

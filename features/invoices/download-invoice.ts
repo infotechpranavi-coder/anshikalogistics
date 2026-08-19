@@ -70,7 +70,7 @@ export async function downloadInvoicePdf(data: LiveInvoiceData) {
           signature,
         },
         qrUrl,
-      })
+      }) as Parameters<typeof pdf>[0]
     ).toBlob();
     saveAs(blob, key);
   } finally {

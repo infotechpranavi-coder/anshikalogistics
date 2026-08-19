@@ -11,7 +11,7 @@ import {
 import { INVOICE_LETTERHEAD } from "@/lib/brand";
 import { amountInIndianWords, formatBillDate, formatCurrency, formatNumber } from "@/lib/utils";
 import type { LiveInvoiceData } from "@/types";
-import { calculateAcCharge, calculateAcLitres } from "@/utils/calculations";
+import { calculateAcCharge, calculateAcLitres, DEFAULT_AC_LITRES_PER_HOUR } from "@/utils/calculations";
 
 const BORDER = "#737373";
 
@@ -142,7 +142,7 @@ export function InvoicePdfDocument({ data, qrUrl }: InvoicePdfProps) {
   const extras = (data.extraExpenses ?? []).filter((item) => item.title.trim());
   const acLitres = calculateAcLitres(data.acHours ?? 0, data.acLitresPerHour);
   const acCharge =
-    data.acCharge ?? calculateAcCharge(data.acHours ?? 0, data.acLitresPerHour, data.dieselRate);
+    data.acCharge ?? calculateAcCharge(data.acHours ?? 0, data.acLitresPerHour ?? DEFAULT_AC_LITRES_PER_HOUR, data.dieselRate);
   const hasAc = (data.acHours ?? 0) > 0 || acCharge !== 0;
   const entry = Number.isFinite(Number(data.remarks)) ? Number(data.remarks) : 0;
   const dieselAmt = data.fuelCost;

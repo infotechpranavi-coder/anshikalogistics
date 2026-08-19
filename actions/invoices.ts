@@ -92,7 +92,9 @@ export async function getInvoiceById(id: string) {
   } catch (error) { return fail(error); }
 }
 
-export async function generateInvoiceFromTrip(tripId: string) {
+export async function generateInvoiceFromTrip(
+  tripId: string
+): Promise<ActionResult<{ id: string; invoiceNumber: string }>> {
   const user = await requireCompany();
   try {
     const trip = await prisma.trip.findFirst({
