@@ -23,6 +23,7 @@ import {
   calculateEntry,
   calculateFuelRequired,
   calculateGrandTotal,
+  calculateTotalAmount,
   calculatePendingLt,
   DEFAULT_AC_LITRES_PER_HOUR,
 } from "@/utils/calculations";
@@ -185,10 +186,11 @@ export function TripEntryForm({
   const acLitresPerHour = numberValue(useWatch({ control, name: "acLitresPerHour" }));
   const acLitres = calculateAcLitres(acHours, acLitresPerHour);
   const pendingLt = calculatePendingLt(fuelRequired, fuelFilled, acLitres);
+  const tripDieselLt = calculatePendingLt(fuelRequired, fuelFilled, 0);
   const loadStatus = useWatch({ control, name: "isEmpty" }) ? "empty" : "loaded";
   const entry = calculateEntry(distance, loadStatus === "loaded");
   const acCharge = calculateAcCharge(acHours, acLitresPerHour, dieselRate);
-  const dieselAmt = calculateDieselAmount(pendingLt, dieselRate, acHours, acLitresPerHour);
+  const dieselAmt = calculateDieselAmount(tripDieselLt, dieselRate);
   const values = watch();
   const selectedVehicle = vehicles.find((vehicle) => vehicle.id === values.vehicleId);
   const selectedDriver = drivers.find((d) => d.id === values.driverId) ?? null;
@@ -197,6 +199,7 @@ export function TripEntryForm({
   );
   const extraTotal = extraExpenses.reduce((sum, item) => sum + numberValue(item.amount), 0);
   const finalAmount = calculateGrandTotal(entry, dieselAmt, extraTotal);
+  const totalAmount = calculateTotalAmount(entry, dieselAmt, acCharge, extraTotal);
 
   useEffect(() => {
     const km = Math.max(0, unloadingKm - loadingKm);
@@ -205,18 +208,18 @@ export function TripEntryForm({
 
   useEffect(() => {
     const lt = calculateFuelRequired(distance, mileage);
-    const pending = calculatePendingLt(lt, fuelFilled, calculateAcLitres(acHours, acLitresPerHour));
+    const tripDieselLt = calculatePendingLt(lt, fuelFilled, 0);
     setValue("fuelRequired", lt, { shouldDirty: false });
-    setValue("fuelCost", calculateDieselAmount(pending, dieselRate, acHours, acLitresPerHour), {
+    setValue("fuelCost", calculateDieselAmount(tripDieselLt, dieselRate), {
       shouldDirty: false,
     });
   }, [distance, mileage, dieselRate, fuelFilled, acHours, acLitresPerHour, setValue]);
 
   useEffect(() => {
-    setValue("grandTotal", finalAmount, { shouldDirty: false });
+    setValue("grandTotal", totalAmount, { shouldDirty: false });
     setValue("miscExpense", extraTotal, { shouldDirty: false });
     setValue("remarks", entry.toFixed(2), { shouldDirty: false });
-  }, [entry, extraTotal, finalAmount, setValue]);
+  }, [entry, extraTotal, totalAmount, setValue]);
 
   useEffect(() => {
     onChangeLiveData?.({
@@ -254,9 +257,9 @@ export function TripEntryForm({
       advance: 0,
       miscExpense: extraTotal,
       expenseTotal: extraTotal,
-      grandTotal: finalAmount,
+      grandTotal: totalAmount,
       paidAmount: numberValue(values.paidAmount),
-      pendingAmount: finalAmount - numberValue(values.paidAmount),
+      pendingAmount: totalAmount - numberValue(values.paidAmount),
       voucherNumber: values.voucherNumber,
       remarks: values.remarks,
       extraExpenses: (values.extraExpenses ?? []).filter(
@@ -282,7 +285,7 @@ export function TripEntryForm({
     defaultValues?.driverName,
     dieselAmt,
     extraTotal,
-    finalAmount,
+    totalAmount,
     fuelFilled,
     fuelRequired,
     acHours,
@@ -628,6 +631,17 @@ export function TripEntryForm({
                 readOnly
                 tabIndex={-1}
                 className="bg-slate-50 font-medium text-slate-700"
+              />
+            </Field>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-1">
+            <Field label="Total Amount">
+              <Input
+                value={totalAmount.toFixed(2)}
+                readOnly
+                tabIndex={-1}
+                className={`bg-slate-50 text-base font-semibold ${totalAmount < 0 ? "text-red-600" : "text-slate-900"}`}
               />
             </Field>
           </div>

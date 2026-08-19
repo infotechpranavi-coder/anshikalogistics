@@ -47,6 +47,15 @@ export function calculateGrandTotal(entry: number, fuelCost: number, expenseTota
   return round2((entry || 0) + (fuelCost || 0) + (expenseTotal || 0));
 }
 
+export function calculateTotalAmount(
+  entry: number,
+  dieselAmt: number,
+  acCharge = 0,
+  extraTotal = 0
+): number {
+  return round2((entry || 0) + (dieselAmt || 0) + (acCharge || 0) + (extraTotal || 0));
+}
+
 export function calculatePending(grandTotal: number, paidAmount: number): number {
   return round2((grandTotal || 0) - (paidAmount || 0));
 }
@@ -126,13 +135,12 @@ export interface TripCalculationResult {
 export function calculateTripTotals(input: TripCalculationInput): TripCalculationResult {
   const distance = calculateDistance(input.loadingKm, input.unloadingKm);
   const fuelRequired = calculateFuelRequired(distance, input.mileage);
-  const acLitres = calculateAcLitres(input.acHours ?? 0, input.acLitresPerHour);
-  const pendingLt = calculatePendingLt(fuelRequired, input.fuelFilled ?? 0, acLitres);
-  const fuelCost = calculateDieselAmount(
-    pendingLt,
-    input.dieselRate,
-    input.acHours,
-    input.acLitresPerHour
+  const tripDieselLt = calculatePendingLt(fuelRequired, input.fuelFilled ?? 0, 0);
+  const fuelCost = calculateDieselAmount(tripDieselLt, input.dieselRate);
+  const acCharge = calculateAcCharge(
+    input.acHours ?? 0,
+    input.acLitresPerHour ?? DEFAULT_AC_LITRES_PER_HOUR,
+    input.dieselRate
   );
   const expenseTotal = calculateExpenseTotal({
     toll: input.toll,
@@ -144,7 +152,7 @@ export function calculateTripTotals(input: TripCalculationInput): TripCalculatio
     miscExpense: input.miscExpense,
   });
   const entry = calculateEntry(distance, input.isLoaded ?? true, input.isEmpty);
-  const grandTotal = calculateGrandTotal(entry, fuelCost, expenseTotal);
+  const grandTotal = calculateTotalAmount(entry, fuelCost, acCharge, expenseTotal);
   const pendingAmount = calculatePending(grandTotal, input.paidAmount);
 
   return {

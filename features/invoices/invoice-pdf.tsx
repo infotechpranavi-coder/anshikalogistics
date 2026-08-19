@@ -147,7 +147,7 @@ export function InvoicePdfDocument({ data, qrUrl }: InvoicePdfProps) {
   const entry = Number.isFinite(Number(data.remarks)) ? Number(data.remarks) : 0;
   const dieselAmt = data.fuelCost;
   const extraTotal = extras.reduce((sum, item) => sum + item.amount, 0);
-  const subTotal = dieselAmt + extraTotal;
+  const subTotal = dieselAmt + extraTotal + (hasAc ? acCharge : 0);
   const totalFreight = data.grandTotal;
   const billTo = data.owner?.trim() || data.driverName || "—";
   const lrNo = data.tripNumber || data.invoiceNumber;
@@ -265,7 +265,7 @@ export function InvoicePdfDocument({ data, qrUrl }: InvoicePdfProps) {
               <Text>{formatCurrency(subTotal)}</Text>
             </View>
             <View style={[styles.totalRow, styles.grand, { borderBottomWidth: 0 }]}>
-              <Text style={styles.bold}>Grand Total</Text>
+              <Text style={styles.bold}>Total Amount</Text>
               <Text style={styles.bold}>{formatCurrency(totalFreight)}</Text>
             </View>
           </View>

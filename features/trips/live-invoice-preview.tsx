@@ -49,7 +49,7 @@ export function LiveInvoicePreview({ data, fullScreen = false }: LiveInvoicePrev
   const dieselAmt = data.fuelCost;
   const extraTotal = extras.reduce((sum, item) => sum + item.amount, 0);
   const acCharge = data.acCharge ?? 0;
-  const subTotal = dieselAmt + extraTotal;
+  const subTotal = dieselAmt + acCharge + extraTotal;
   const totalFreight = data.grandTotal;
   const billTo = data.owner?.trim() || data.driverName || "—";
   const lrNo = data.tripNumber || data.invoiceNumber;
@@ -235,7 +235,7 @@ export function LiveInvoicePreview({ data, fullScreen = false }: LiveInvoicePrev
             </div>
             <div className="h-6 border-b border-neutral-400" />
             <div className="flex justify-between bg-neutral-200 px-3 py-1.5 font-bold">
-              <span>Grand Total</span>
+              <span>Total Amount</span>
               <span>{formatCurrency(totalFreight)}</span>
             </div>
           </div>
