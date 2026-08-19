@@ -671,14 +671,22 @@ export function TripEntryForm({
                 className="bg-slate-50 font-medium text-slate-700"
               />
             </Field>
-            <Field label="Total Amount">
-              <Input
-                value={totalAmount.toFixed(2)}
-                readOnly
-                tabIndex={-1}
-                className={`bg-slate-50 text-base font-semibold ${totalAmount < 0 ? "text-red-600" : "text-slate-900"}`}
-              />
-            </Field>
+          </div>
+
+          <div className="rounded-xl border-2 border-slate-800 bg-slate-50 px-4 py-3">
+            <p className="text-[13px] font-semibold text-slate-800">Total Amount</p>
+            <p className="mt-1 break-words font-mono text-sm leading-6 text-slate-800">
+              {formatSignedAmount(entry)} (Entry) {formatSignedAmount(dieselAmt, true)} (Desil Amt){" "}
+              {formatSignedAmount(acCharge, true)} (AC diesel) {formatSignedAmount(extraTotal, true)} (Other expenses) ={" "}
+              <span className={`font-semibold ${totalAmount < 0 ? "text-red-600" : "text-slate-900"}`}>
+                {formatSignedAmount(totalAmount)}
+              </span>
+            </p>
+            <p
+              className={`mt-2 text-right text-xl font-bold ${totalAmount < 0 ? "text-red-600" : "text-slate-900"}`}
+            >
+              {formatSignedAmount(totalAmount)}
+            </p>
           </div>
         </div>
       </section>
@@ -739,6 +747,12 @@ export function TripEntryForm({
       ) : null}
     </form>
   );
+}
+
+function formatSignedAmount(value: number, withOperator = false) {
+  const amount = Math.abs(value).toFixed(2);
+  if (!withOperator) return value < 0 ? `−${amount}` : amount;
+  return value < 0 ? `− ${amount}` : `+ ${amount}`;
 }
 
 function Field({
