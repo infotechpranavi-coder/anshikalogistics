@@ -227,6 +227,7 @@ export async function createTrip(input: TripInput): Promise<ActionResult<{ id: s
       companyId: user.companyId,
     });
     revalidatePath("/trips");
+    revalidatePath("/invoices");
     return { success: true, data: { id: created.id, tripNumber: created.tripNumber } };
   } catch (error) {
     return errorResult(error);
@@ -306,6 +307,7 @@ export async function updateTrip(
     });
     revalidatePath("/trips");
     revalidatePath(`/trips/${id}`);
+    revalidatePath("/invoices");
     return { success: true, data: { id: updated.id, tripNumber: updated.tripNumber } };
   } catch (error) {
     return errorResult(error);

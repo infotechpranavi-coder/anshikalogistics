@@ -8,7 +8,7 @@ import {
   formatNumber,
 } from "@/lib/utils";
 import { APP_LOGO, INVOICE_LETTERHEAD } from "@/lib/brand";
-import { calculateAcLitres, formatLtWithAc } from "@/utils/calculations";
+import { calculateAcLitres } from "@/utils/calculations";
 import { buildUpiQrPayload, generateQrDataUrl } from "@/lib/qrcode";
 import type { LiveInvoiceData } from "@/types";
 
@@ -62,9 +62,10 @@ export function LiveInvoicePreview({ data, fullScreen = false }: LiveInvoicePrev
     "Truck No",
     "From City",
     "To City",
-    "Temp.",
+    "Type",
     "KM",
     "Lt",
+    ...(hasAc ? ["AC Lt"] : []),
     "Entry",
     "Desil Amt",
     ...(hasAc ? ["AC Charge"] : []),
@@ -112,12 +113,12 @@ export function LiveInvoicePreview({ data, fullScreen = false }: LiveInvoicePrev
           {INVOICE_LETTERHEAD.jurisdiction}
         </p>
 
-        <header className="mt-1 grid grid-cols-[88px_1fr] items-start gap-3 sm:grid-cols-[110px_1fr]">
+        <header className="mt-1 grid grid-cols-[80px_1fr_80px] items-center sm:grid-cols-[96px_1fr_96px]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={data.companyLogo || APP_LOGO}
             alt={`${data.companyName || INVOICE_LETTERHEAD.name} logo`}
-            className="h-16 w-20 object-contain sm:h-20 sm:w-24"
+            className="h-16 w-20 justify-self-start object-contain sm:h-20 sm:w-24"
           />
           <div className="text-center">
             <h1 className="font-serif text-2xl font-bold uppercase tracking-wide text-[#b45309] sm:text-4xl">
@@ -145,6 +146,7 @@ export function LiveInvoicePreview({ data, fullScreen = false }: LiveInvoicePrev
               </p>
             ) : null}
           </div>
+          <div />
         </header>
 
         <div className="relative mt-3 border border-neutral-400 py-1 text-center">
@@ -191,7 +193,8 @@ export function LiveInvoicePreview({ data, fullScreen = false }: LiveInvoicePrev
                 <Cell>{data.destination || "—"}</Cell>
                 <Cell>{temp}</Cell>
                 <Cell>{formatNumber(data.distance)}</Cell>
-                <Cell>{formatLtWithAc(data.fuelRequired, acLitres)}</Cell>
+                <Cell>{formatNumber(data.fuelRequired)}</Cell>
+                {hasAc ? <Cell>{formatNumber(acLitres)}</Cell> : null}
                 <Cell right>{money(entry, true)}</Cell>
                 <Cell right>{money(dieselAmt, true)}</Cell>
                 {hasAc ? <Cell right>{money(acCharge, true)}</Cell> : null}

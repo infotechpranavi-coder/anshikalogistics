@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FieldPath } from "react-hook-form";
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
-import { FileCheck2, Plus, Save, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,7 +25,6 @@ import {
   calculateGrandTotal,
   calculatePendingLt,
   DEFAULT_AC_LITRES_PER_HOUR,
-  formatLtWithAc,
 } from "@/utils/calculations";
 import type { LiveInvoiceData, TripFormValues } from "@/types";
 
@@ -78,6 +77,16 @@ export interface TripEntryFormProps {
   nextInvoiceNumber: string;
   onSubmit: (data: TripInput & { status: string }) => Promise<void>;
   onSaveDraft: (data: TripInput) => Promise<void>;
+  onGenerateInvoice: (
+    data: TripInput
+  ) => Promise<{ invoiceNumber: string; invoiceId: string; tripId: string }>;
+  onInvoiceGenerated?: (info: { invoiceNumber: string; tripId: string }) => void;
+  onRegisterActions?: (actions: {
+    draft: () => void;
+    save: () => void;
+    invoice: () => void;
+  }) => void;
+  onBusyChange?: (action: string | null) => void;
   onChangeLiveData?: (data: LiveInvoiceData) => void;
   tripId?: string;
 }
@@ -102,11 +111,19 @@ export function TripEntryForm({
   nextInvoiceNumber,
   onSubmit,
   onSaveDraft,
+  onGenerateInvoice,
+  onInvoiceGenerated,
+  onRegisterActions,
+  onBusyChange,
   onChangeLiveData,
-  tripId,
 }: TripEntryFormProps) {
   const [action, setAction] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const actionsRef = useRef({
+    draft: () => {},
+    save: () => {},
+    invoice: () => {},
+  });
   const {
     control,
     register,
@@ -321,20 +338,60 @@ export function TripEntryForm({
     return parsed.data;
   };
 
-  const runAction = async (kind: "draft" | "save") => {
+  const runAction = async (kind: "draft" | "save" | "invoice") => {
     const parsed = parseValues(kind === "draft" ? "DRAFT" : "COMPLETED");
     if (!parsed) return;
     setAction(kind);
+    onBusyChange?.(kind);
     setActionError(null);
     try {
       if (kind === "draft") await onSaveDraft(parsed);
-      else await onSubmit({ ...parsed, status: "COMPLETED" });
+      else if (kind === "invoice") {
+        const invoice = await onGenerateInvoice({ ...parsed, status: "COMPLETED" });
+        onInvoiceGenerated?.({ invoiceNumber: invoice.invoiceNumber, tripId: invoice.tripId });
+      } else await onSubmit({ ...parsed, status: "COMPLETED" });
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : "Unable to save the trip.");
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "digest" in error &&
+        typeof (error as { digest?: unknown }).digest === "string" &&
+        (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+      ) {
+        throw error;
+      }
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : kind === "invoice"
+            ? "Unable to generate the invoice."
+            : "Unable to save the trip."
+      );
     } finally {
       setAction(null);
+      onBusyChange?.(null);
     }
   };
+
+  actionsRef.current = {
+    draft: () => {
+      void runAction("draft");
+    },
+    save: () => {
+      void runAction("save");
+    },
+    invoice: () => {
+      void runAction("invoice");
+    },
+  };
+
+  useEffect(() => {
+    onRegisterActions?.({
+      draft: () => actionsRef.current.draft(),
+      save: () => actionsRef.current.save(),
+      invoice: () => actionsRef.current.invoice(),
+    });
+  }, [onRegisterActions]);
 
   return (
     <form
@@ -498,7 +555,7 @@ export function TripEntryForm({
           <div className="grid gap-4 sm:grid-cols-3">
             <Field label="Lt">
               <Input
-                value={formatLtWithAc(fuelRequired, acLitres)}
+                value={fuelRequired.toFixed(2)}
                 readOnly
                 tabIndex={-1}
                 className="bg-slate-50 font-medium text-slate-700"
@@ -515,8 +572,8 @@ export function TripEntryForm({
             </Field>
           </div>
 
-          {/* Row 6: AC usage hours, diesel per hour, AC charge */}
-          <div className="grid gap-4 sm:grid-cols-3">
+          {/* Row 6: AC usage hours, diesel per hour, total AC diesel, AC charge */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <NumberField
               label="AC usage hours"
               name="acHours"
@@ -529,6 +586,14 @@ export function TripEntryForm({
               register={register}
               error={errors.acLitresPerHour?.message}
             />
+            <Field label="Total AC usage Diesel">
+              <Input
+                value={`${acLitres.toFixed(2)} Ltr`}
+                readOnly
+                tabIndex={-1}
+                className="bg-slate-50 font-medium text-slate-700"
+              />
+            </Field>
             <Field label="AC charge">
               <Input
                 value={acCharge.toFixed(2)}
@@ -623,17 +688,6 @@ export function TripEntryForm({
       {actionError ? (
         <p role="alert" className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{actionError}</p>
       ) : null}
-
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" disabled={action !== null} onClick={() => void runAction("draft")}>
-          <Save className="h-4 w-4" />
-          {action === "draft" ? "Saving…" : "Save draft"}
-        </Button>
-        <Button type="submit" disabled={action !== null}>
-          <FileCheck2 className="h-4 w-4" />
-          {action === "save" ? "Saving…" : tripId ? "Update trip" : "Save trip"}
-        </Button>
-      </div>
     </form>
   );
 }

@@ -1,8 +1,48 @@
 import { notFound } from "next/navigation";
-import { getInvoiceById,updateInvoiceStatus } from "@/actions/invoices";
+import { getInvoiceById, updateInvoiceStatus } from "@/actions/invoices";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card,CardContent,CardHeader,CardTitle } from "@/components/ui/card";
-import { formatCurrency,formatDate } from "@/lib/utils";
-export default async function InvoicePage({params}:{params:Promise<{id:string}>}){const {id}=await params;const result=await getInvoiceById(id);if(!result.data)notFound();const x=result.data;async function setStatus(form:FormData){"use server";await updateInvoiceStatus(id,String(form.get("status")) as typeof x.status)}return <div className="space-y-6"><PageHeader title={x.invoiceNumber} description={`Issued ${formatDate(x.invoiceDate)}`}><Badge variant={x.status==="PAID"?"success":"warning"}>{x.status}</Badge></PageHeader><div className="grid gap-6 lg:grid-cols-2"><Card><CardHeader><CardTitle>Trip details</CardTitle></CardHeader><CardContent className="space-y-2 text-sm"><p><strong>Trip:</strong> {x.trip.tripNumber}</p><p><strong>Vehicle:</strong> {x.trip.vehicle.number}</p><p><strong>Driver:</strong> {x.trip.driver?.name??"—"}</p><p><strong>Route:</strong> {x.trip.source} → {x.trip.destination}</p><p><strong>Distance:</strong> {x.trip.distance} km</p></CardContent></Card><Card><CardHeader><CardTitle>Invoice totals</CardTitle></CardHeader><CardContent className="space-y-3"><p className="flex justify-between"><span>Subtotal</span><strong>{formatCurrency(x.subtotal)}</strong></p><p className="flex justify-between"><span>Tax</span><strong>{formatCurrency(x.taxAmount)}</strong></p><p className="flex justify-between border-t pt-3 text-lg"><span>Total</span><strong>{formatCurrency(x.grandTotal)}</strong></p><p className="flex justify-between text-emerald-700"><span>Paid</span><strong>{formatCurrency(x.paidAmount)}</strong></p><p className="flex justify-between text-amber-700"><span>Pending</span><strong>{formatCurrency(x.pendingAmount)}</strong></p></CardContent></Card></div><form action={setStatus} className="flex flex-wrap gap-2">{["GENERATED","SENT","PAID","CANCELLED"].map(status=><Button key={status} name="status" value={status} variant={status==="PAID"?"default":"outline"}>Mark {status.toLowerCase()}</Button>)}</form></div>}
+import { invoiceToLiveData } from "@/features/invoices/invoice-live-data";
+import { DownloadInvoiceButton } from "@/features/invoices/download-invoice-button";
+import { LiveInvoicePreview } from "@/features/trips/live-invoice-preview";
+import { formatDate } from "@/lib/utils";
+
+export default async function InvoicePage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const result = await getInvoiceById(id);
+  if (!result.data) notFound();
+  const invoice = result.data;
+
+  async function setStatus(form: FormData) {
+    "use server";
+    await updateInvoiceStatus(id, String(form.get("status")) as typeof invoice.status);
+  }
+
+  const liveData = invoiceToLiveData(invoice);
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title={invoice.invoiceNumber} description={`Issued ${formatDate(invoice.invoiceDate)}`}>
+        <Badge variant={invoice.status === "PAID" ? "success" : "warning"}>{invoice.status}</Badge>
+        <DownloadInvoiceButton data={liveData} />
+      </PageHeader>
+
+      <div className="rounded-2xl bg-slate-100 p-4 sm:p-6 print:bg-white print:p-0">
+        <LiveInvoicePreview data={liveData} fullScreen />
+      </div>
+
+      <form action={setStatus} className="flex flex-wrap gap-2 print:hidden">
+        {(["GENERATED", "SENT", "PAID", "CANCELLED"] as const).map((status) => (
+          <Button key={status} name="status" value={status} variant={status === "PAID" ? "default" : "outline"}>
+            Mark {status.toLowerCase()}
+          </Button>
+        ))}
+      </form>
+    </div>
+  );
+}

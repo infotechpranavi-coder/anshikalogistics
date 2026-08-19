@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { generateInvoiceFromTrip } from "@/actions/invoices";
 import { createTrip } from "@/actions/trips";
 import { PageHeader } from "@/components/shared/page-header";
 import { TripFormPage } from "@/features/trips/trip-form-page";
@@ -58,11 +59,25 @@ export default async function NewTripPage() {
     redirect("/trips");
   }
 
+  async function generateInvoice(data: TripInput) {
+    "use server";
+
+    const result = await createTrip({ ...data, status: "COMPLETED" });
+    if (!result.success || !result.data) {
+      throw new Error(result.error ?? "Unable to save the trip.");
+    }
+    const invoice = await generateInvoiceFromTrip(result.data.id);
+    if (!invoice.success || !invoice.data) {
+      throw new Error(invoice.error ?? "Unable to generate the invoice.");
+    }
+    return { ...invoice.data, tripId: result.data.id };
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="New Trip"
-        description="Enter trip details, then open the Preview tab to see the full invoice."
+        description="Enter trip details, then generate the invoice to open Preview."
       />
       <TripFormPage
         vehicles={vehicles}
@@ -71,6 +86,7 @@ export default async function NewTripPage() {
         nextInvoiceNumber={`${company.invoicePrefix}-DRAFT`}
         onSubmit={saveTrip}
         onSaveDraft={saveTrip}
+        onGenerateInvoice={generateInvoice}
       />
     </div>
   );

@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { generateInvoiceFromTrip } from "@/actions/invoices";
 import { getTripById, updateTrip } from "@/actions/trips";
 import { PageHeader } from "@/components/shared/page-header";
 import { TripFormPage } from "@/features/trips/trip-form-page";
@@ -8,10 +9,13 @@ import type { TripInput } from "@/schemas";
 
 export default async function EditTripPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ preview?: string }>;
 }) {
   const { id } = await params;
+  const { preview } = await searchParams;
   const user = await requireCompany();
   const [tripResult, vehicles, drivers, company] = await Promise.all([
     getTripById(id),
@@ -67,17 +71,32 @@ export default async function EditTripPage({
     redirect("/trips");
   }
 
+  async function generateInvoice(data: TripInput) {
+    "use server";
+
+    const result = await updateTrip(id, { ...data, status: "COMPLETED" });
+    if (!result.success) {
+      throw new Error(result.error ?? "Unable to save the trip.");
+    }
+    const invoice = await generateInvoiceFromTrip(id);
+    if (!invoice.success || !invoice.data) {
+      throw new Error(invoice.error ?? "Unable to generate the invoice.");
+    }
+    return { ...invoice.data, tripId: id };
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
         title={`Edit ${trip.tripNumber}`}
-        description="Update trip details, then open the Preview tab to see the full invoice."
+        description="Update trip details, then generate the invoice to open Preview."
       />
       <TripFormPage
         tripId={trip.id}
         vehicles={vehicles}
         drivers={drivers}
         company={company}
+        initialTab={preview === "1" ? "preview" : "trip"}
         nextInvoiceNumber={trip.invoice?.invoiceNumber ?? `${company.invoicePrefix}-DRAFT`}
         defaultValues={{
           vehicleId: trip.vehicleId,
@@ -123,6 +142,7 @@ export default async function EditTripPage({
         }}
         onSubmit={saveTrip}
         onSaveDraft={saveTrip}
+        onGenerateInvoice={generateInvoice}
       />
     </div>
   );

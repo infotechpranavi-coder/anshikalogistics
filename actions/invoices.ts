@@ -8,7 +8,17 @@ import { requireCompany } from "@/lib/session";
 import { generateInvoiceNumber } from "@/lib/utils";
 import type { ActionResult } from "@/types";
 
-const detailInclude = { trip: { include: { vehicle: true, driver: true } }, company: true, payments: { orderBy: { paymentDate: "desc" as const } } } as const;
+const detailInclude = {
+  trip: {
+    include: {
+      vehicle: true,
+      driver: true,
+      expenses: { select: { title: true, amount: true } },
+    },
+  },
+  company: true,
+  payments: { orderBy: { paymentDate: "desc" as const } },
+} as const;
 const BULK_DELETE_BATCH_SIZE = 100;
 const DELETE_TRANSACTION_OPTIONS = { maxWait: 10_000, timeout: 60_000 };
 
@@ -85,13 +95,43 @@ export async function getInvoiceById(id: string) {
 export async function generateInvoiceFromTrip(tripId: string) {
   const user = await requireCompany();
   try {
-    const trip = await prisma.trip.findFirst({ where: { id: tripId, companyId: user.companyId }, include: { invoice: true } });
+    const trip = await prisma.trip.findFirst({
+      where: { id: tripId, companyId: user.companyId },
+      include: { invoice: true },
+    });
     if (!trip) return { success: false, error: "Trip not found." };
-    if (trip.invoice) return { success: true, data: { id: trip.invoice.id, invoiceNumber: trip.invoice.invoiceNumber } };
+
+    const totals = {
+      status: "GENERATED" as const,
+      subtotal: trip.grandTotal,
+      grandTotal: trip.grandTotal,
+      paidAmount: trip.paidAmount,
+      pendingAmount: trip.pendingAmount,
+    };
+
+    if (trip.invoice) {
+      await prisma.invoice.update({ where: { id: trip.invoice.id }, data: totals });
+      revalidatePath("/invoices");
+      revalidatePath(`/invoices/${trip.invoice.id}`);
+      revalidatePath(`/trips/${tripId}`);
+      return { success: true, data: { id: trip.invoice.id, invoiceNumber: trip.invoice.invoiceNumber } };
+    }
+
     const invoiceNumber = await nextNumber(user.companyId);
-    const invoice = await prisma.invoice.create({ data: { invoiceNumber, status: "GENERATED", subtotal: trip.grandTotal, grandTotal: trip.grandTotal, paidAmount: trip.paidAmount, pendingAmount: trip.pendingAmount, tripId, companyId: user.companyId } });
-    await createAuditLog({ action: "CREATE", entity: "Invoice", entityId: invoice.id, details: `Generated ${invoiceNumber} from ${trip.tripNumber}`, userId: user.id, companyId: user.companyId });
-    revalidatePath("/invoices"); revalidatePath(`/trips/${tripId}`);
+    const invoice = await prisma.invoice.create({
+      data: { invoiceNumber, ...totals, tripId, companyId: user.companyId },
+    });
+    await createAuditLog({
+      action: "CREATE",
+      entity: "Invoice",
+      entityId: invoice.id,
+      details: `Generated ${invoiceNumber} from ${trip.tripNumber}`,
+      userId: user.id,
+      companyId: user.companyId,
+    });
+    revalidatePath("/invoices");
+    revalidatePath(`/invoices/${invoice.id}`);
+    revalidatePath(`/trips/${tripId}`);
     return { success: true, data: { id: invoice.id, invoiceNumber } };
   } catch (error) { return fail(error); }
 }
