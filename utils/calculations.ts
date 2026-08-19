@@ -86,12 +86,36 @@ export function calculateAcLitres(
   return round2((hours || 0) * (litresPerHour || 0));
 }
 
+export function hoursBetweenTimes(start?: string, end?: string): number | null {
+  if (!start || !end) return null;
+  const parse = (value: string) => {
+    const [hours, minutes] = value.split(":").map(Number);
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+    return hours * 60 + minutes;
+  };
+  const from = parse(start);
+  const to = parse(end);
+  if (from == null || to == null) return null;
+  let mins = to - from;
+  if (mins < 0) mins += 24 * 60;
+  return round2(mins / 60);
+}
+
+export function calculateAcDieselAmount(
+  acLitres: number,
+  acPaidLt: number,
+  dieselRate: number
+): number {
+  return calculateFuelCost((acLitres || 0) - (acPaidLt || 0), dieselRate);
+}
+
 export function calculateAcCharge(
   hours: number,
   litresPerHour: number,
-  dieselRate: number
+  dieselRate: number,
+  acPaidLt = 0
 ): number {
-  return calculateFuelCost(calculateAcLitres(hours, litresPerHour), dieselRate);
+  return calculateAcDieselAmount(calculateAcLitres(hours, litresPerHour), acPaidLt, dieselRate);
 }
 
 export function calculateDieselAmount(
@@ -113,6 +137,7 @@ export interface TripCalculationInput {
   isEmpty?: boolean;
   acHours?: number;
   acLitresPerHour?: number;
+  acPaidLt?: number;
   toll: number;
   parking: number;
   food: number;
@@ -140,7 +165,8 @@ export function calculateTripTotals(input: TripCalculationInput): TripCalculatio
   const acCharge = calculateAcCharge(
     input.acHours ?? 0,
     input.acLitresPerHour ?? DEFAULT_AC_LITRES_PER_HOUR,
-    input.dieselRate
+    input.dieselRate,
+    input.acPaidLt ?? 0
   );
   const expenseTotal = calculateExpenseTotal({
     toll: input.toll,

@@ -276,6 +276,9 @@ model Trip {
   fuelCost        Float          @default(0)
   acHours         Float          @default(0)
   acLitresPerHour Float          @default(2)
+  acStartTime     String?
+  acEndTime       String?
+  acPaidLt        Float          @default(0)
   toll            Float          @default(0)
   parking         Float          @default(0)
   food            Float          @default(0)

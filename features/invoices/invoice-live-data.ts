@@ -33,6 +33,7 @@ type InvoiceLiveSource = {
     fuelCost: number;
     acHours?: number | null;
     acLitresPerHour?: number | null;
+    acPaidLt?: number | null;
     remarks?: string | null;
     grandTotal: number;
     paidAmount: number;
@@ -80,7 +81,7 @@ export function invoiceToLiveData(invoice: InvoiceLiveSource): LiveInvoiceData {
     fuelCost: trip.fuelCost,
     acHours,
     acLitresPerHour,
-    acCharge: calculateAcCharge(acHours, acLitresPerHour, trip.dieselRate),
+    acCharge: calculateAcCharge(acHours, acLitresPerHour, trip.dieselRate, trip.acPaidLt ?? 0),
     toll: 0,
     parking: 0,
     food: 0,

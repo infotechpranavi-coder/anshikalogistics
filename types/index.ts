@@ -81,6 +81,9 @@ export interface TripFormValues {
   fuelFilled: number;
   acHours?: number;
   acLitresPerHour?: number;
+  acStartTime?: string;
+  acEndTime?: string;
+  acPaidLt?: number;
   toll: number;
   parking: number;
   food: number;
@@ -122,6 +125,7 @@ export interface LiveInvoiceData {
   acHours?: number;
   acLitresPerHour?: number;
   acCharge?: number;
+  acPaidLt?: number;
   toll: number;
   parking: number;
   food: number;

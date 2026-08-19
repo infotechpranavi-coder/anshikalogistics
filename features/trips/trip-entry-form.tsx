@@ -25,6 +25,7 @@ import {
   calculateGrandTotal,
   calculateTotalAmount,
   calculatePendingLt,
+  hoursBetweenTimes,
   DEFAULT_AC_LITRES_PER_HOUR,
 } from "@/utils/calculations";
 import type { LiveInvoiceData, TripFormValues } from "@/types";
@@ -55,6 +56,9 @@ export interface TripEntryFormProps {
     grandTotal?: number;
     acHours?: number;
     acLitresPerHour?: number;
+    acStartTime?: string;
+    acEndTime?: string;
+    acPaidLt?: number;
     extraExpenses?: { title: string; amount: number }[];
     tripNumber?: string;
   };
@@ -154,6 +158,9 @@ export function TripEntryForm({
       fuelCost: defaultValues?.fuelCost ?? 0,
       acHours: defaultValues?.acHours ?? 0,
       acLitresPerHour: defaultValues?.acLitresPerHour ?? DEFAULT_AC_LITRES_PER_HOUR,
+      acStartTime: defaultValues?.acStartTime ?? "",
+      acEndTime: defaultValues?.acEndTime ?? "",
+      acPaidLt: defaultValues?.acPaidLt ?? 0,
       grandTotal: defaultValues?.grandTotal ?? 0,
       toll: 0,
       parking: 0,
@@ -184,12 +191,17 @@ export function TripEntryForm({
   const fuelFilled = numberValue(useWatch({ control, name: "fuelFilled" }));
   const acHours = numberValue(useWatch({ control, name: "acHours" }));
   const acLitresPerHour = numberValue(useWatch({ control, name: "acLitresPerHour" }));
-  const acLitres = calculateAcLitres(acHours, acLitresPerHour);
+  const acStartTime = useWatch({ control, name: "acStartTime" }) ?? "";
+  const acEndTime = useWatch({ control, name: "acEndTime" }) ?? "";
+  const acPaidLt = numberValue(useWatch({ control, name: "acPaidLt" }));
+  const acHoursFromTimes = hoursBetweenTimes(acStartTime, acEndTime);
+  const acUsageHours = acHoursFromTimes ?? acHours;
+  const acLitres = calculateAcLitres(acUsageHours, acLitresPerHour);
   const pendingLt = calculatePendingLt(fuelRequired, fuelFilled, acLitres);
   const tripDieselLt = calculatePendingLt(fuelRequired, fuelFilled, 0);
   const loadStatus = useWatch({ control, name: "isEmpty" }) ? "empty" : "loaded";
   const entry = calculateEntry(distance, loadStatus === "loaded");
-  const acCharge = calculateAcCharge(acHours, acLitresPerHour, dieselRate);
+  const acCharge = calculateAcCharge(acUsageHours, acLitresPerHour, dieselRate, acPaidLt);
   const dieselAmt = calculateDieselAmount(tripDieselLt, dieselRate);
   const values = watch();
   const selectedVehicle = vehicles.find((vehicle) => vehicle.id === values.vehicleId);
@@ -205,6 +217,11 @@ export function TripEntryForm({
     const km = Math.max(0, unloadingKm - loadingKm);
     setValue("distance", km, { shouldDirty: false });
   }, [loadingKm, unloadingKm, setValue]);
+
+  useEffect(() => {
+    if (acHoursFromTimes == null) return;
+    setValue("acHours", acHoursFromTimes, { shouldDirty: false });
+  }, [acHoursFromTimes, setValue]);
 
   useEffect(() => {
     const lt = calculateFuelRequired(distance, mileage);
@@ -246,9 +263,10 @@ export function TripEntryForm({
       fuelFilled,
       fuelRequired,
       fuelCost: dieselAmt,
-      acHours,
+      acHours: acUsageHours,
       acLitresPerHour,
       acCharge,
+      acPaidLt,
       toll: 0,
       parking: 0,
       food: 0,
@@ -291,6 +309,8 @@ export function TripEntryForm({
     acHours,
     acLitresPerHour,
     acCharge,
+    acPaidLt,
+    acUsageHours,
     loadingKm,
     nextInvoiceNumber,
     onChangeLiveData,
@@ -323,6 +343,7 @@ export function TripEntryForm({
       fuelCost: numberValue(values.fuelCost),
       acHours: numberValue(values.acHours),
       acLitresPerHour: numberValue(values.acLitresPerHour),
+      acPaidLt: numberValue(values.acPaidLt),
       grandTotal: numberValue(values.grandTotal),
       loadingKm: numberValue(values.loadingKm),
       unloadingKm: numberValue(values.unloadingKm),
@@ -603,21 +624,32 @@ export function TripEntryForm({
             </Field>
           </div>
 
-          {/* Row 7: AC usage hours, diesel per hour, total AC diesel, AC charge */}
+          {/* Row 7: AC per hour, start/end, usage, litres, paid ltr, AC diesel, total */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <NumberField
-              label="AC usage hours"
-              name="acHours"
-              register={register}
-              error={errors.acHours?.message}
-            />
-            <NumberField
-              label="Diesel per hour (Lt)"
+              label="AC per hour"
               name="acLitresPerHour"
               register={register}
               error={errors.acLitresPerHour?.message}
             />
-            <Field label="Total AC usage Diesel">
+            <Field label="Start" error={errors.acStartTime?.message}>
+              <Input type="time" {...register("acStartTime")} />
+            </Field>
+            <Field label="End" error={errors.acEndTime?.message}>
+              <Input type="time" {...register("acEndTime")} />
+            </Field>
+            <Field label="Total AC usage" error={errors.acHours?.message}>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                readOnly={acHoursFromTimes != null}
+                tabIndex={acHoursFromTimes != null ? -1 : undefined}
+                className={acHoursFromTimes != null ? "bg-slate-50 font-medium text-slate-700" : undefined}
+                {...register("acHours", { valueAsNumber: true })}
+              />
+            </Field>
+            <Field label="Liter calculator">
               <Input
                 value={`${acLitres.toFixed(2)} Ltr`}
                 readOnly
@@ -625,7 +657,13 @@ export function TripEntryForm({
                 className="bg-slate-50 font-medium text-slate-700"
               />
             </Field>
-            <Field label="AC charge">
+            <NumberField
+              label="Paid Ltr"
+              name="acPaidLt"
+              register={register}
+              error={errors.acPaidLt?.message}
+            />
+            <Field label="AC diesel amount">
               <Input
                 value={acCharge.toFixed(2)}
                 readOnly
@@ -633,9 +671,6 @@ export function TripEntryForm({
                 className="bg-slate-50 font-medium text-slate-700"
               />
             </Field>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-1">
             <Field label="Total Amount">
               <Input
                 value={totalAmount.toFixed(2)}
