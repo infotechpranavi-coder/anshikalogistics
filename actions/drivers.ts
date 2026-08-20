@@ -81,6 +81,7 @@ export async function deleteDrivers(ids: string[]): Promise<ActionResult<{ count
           data: { driverId: null },
         });
         await tx.attendance.deleteMany({ where: { driverId: { in: batch } } });
+        await tx.driverSalaryPayment.deleteMany({ where: { driverId: { in: batch } } });
         await tx.driver.deleteMany({ where: { id: { in: batch }, companyId: user.companyId } });
       }, DELETE_TRANSACTION_OPTIONS);
     }

@@ -11,7 +11,7 @@ export default async function DriversPage() {
 
   return (
     <div className="page-stack">
-      <PageHeader badge="Fleet" title="Drivers" description="Manage drivers, licenses, and vehicle assignments.">
+      <PageHeader badge="Fleet" title="Drivers" description="Manage drivers, monthly salaries, licenses, and vehicle assignments.">
         <Button asChild>
           <Link href="/drivers/new">
             <Plus className="h-4 w-4" />

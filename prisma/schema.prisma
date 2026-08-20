@@ -176,6 +176,7 @@ model Company {
   users                User[]
   vehicles             Vehicle[]
   drivers              Driver[]
+  salaryPayments       DriverSalaryPayment[]
   trips                Trip[]
   expenses             Expense[]
   invoices             Invoice[]
@@ -237,11 +238,31 @@ model Driver {
   trips           Trip[]
   expenses        Expense[]
   attendance      Attendance[]
+  salaryPayments  DriverSalaryPayment[]
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
   @@index([companyId, isActive])
   @@index([userId])
+}
+
+model DriverSalaryPayment {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  driverId  String   @db.ObjectId
+  driver    Driver   @relation(fields: [driverId], references: [id])
+  companyId String   @db.ObjectId
+  company   Company  @relation(fields: [companyId], references: [id])
+  /// Salary month in YYYY-MM format (e.g. 2026-08)
+  month     String
+  paidDate  DateTime
+  amount    Float
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([driverId, month])
+  @@index([companyId, driverId])
+  @@index([companyId, month])
 }
 
 model Attendance {

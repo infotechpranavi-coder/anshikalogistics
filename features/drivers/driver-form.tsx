@@ -49,7 +49,7 @@ export function DriverForm({
   });
 
   const submit = handleSubmit(async (values) => {
-    const parsed = driverSchema.safeParse({ ...values, salary: initial?.salary ?? 0 });
+    const parsed = driverSchema.safeParse(values);
     if (!parsed.success) {
       parsed.error.issues.forEach((i) => {
         const k = i.path[0];
@@ -77,6 +77,9 @@ export function DriverForm({
         </Field>
         <Field label="Alternate phone">
           <Input {...register("alternatePhone")} />
+        </Field>
+        <Field label="Monthly salary" error={errors.salary?.message}>
+          <Input type="number" min="0" step="0.01" {...register("salary", { valueAsNumber: true })} />
         </Field>
         <Field label="License number">
           <Input {...register("licenseNumber")} />

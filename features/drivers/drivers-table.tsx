@@ -10,12 +10,13 @@ import {
   getPaginationRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { Pencil, Search, Trash2, Users } from "lucide-react";
+import { IndianRupee, Pencil, Search, Trash2, Users } from "lucide-react";
 import { ModernPanel } from "@/components/shared/modern-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { DriverSalaryPanel, type DriverSalaryTarget } from "@/features/drivers/driver-salary-panel";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 export interface DriverRow {
@@ -54,6 +55,7 @@ export function DriversTable({
   const [busy, setBusy] = useState("");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [salaryDriver, setSalaryDriver] = useState<DriverSalaryTarget | null>(null);
 
   const columns = useMemo<ColumnDef<DriverRow>[]>(
     () => [
@@ -120,7 +122,22 @@ export function DriversTable({
         id: "actions",
         header: "",
         cell: ({ row }) => (
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-1">
+            <Button
+              size="icon"
+              variant="ghost"
+              title="Pay / view salary"
+              aria-label={`Salary for ${row.original.name}`}
+              onClick={() =>
+                setSalaryDriver({
+                  id: row.original.id,
+                  name: row.original.name,
+                  salary: row.original.salary,
+                })
+              }
+            >
+              <IndianRupee className="h-4 w-4 text-teal-700" />
+            </Button>
             <Button
               size="icon"
               variant="ghost"
@@ -280,6 +297,14 @@ export function DriversTable({
           Next
         </Button>
       </div>
+
+      <DriverSalaryPanel
+        driver={salaryDriver}
+        open={Boolean(salaryDriver)}
+        onOpenChange={(next) => {
+          if (!next) setSalaryDriver(null);
+        }}
+      />
     </ModernPanel>
   );
 }

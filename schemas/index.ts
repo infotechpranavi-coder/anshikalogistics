@@ -153,6 +153,16 @@ export const companySettingsSchema = z.object({
   upiId: z.string().optional(),
 });
 
+export const driverSalaryPaymentSchema = z.object({
+  driverId: z.string().min(1, "Driver is required"),
+  month: z
+    .string()
+    .regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Select a valid salary month"),
+  paidDate: z.coerce.date(),
+  amount: z.coerce.number().positive("Salary amount must be greater than 0"),
+  notes: z.string().optional(),
+});
+
 export const userSchema = z.object({
   name: z.string().min(2),
   email: z.string().email(),
@@ -166,6 +176,7 @@ export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type VehicleInput = z.infer<typeof vehicleSchema>;
 export type DriverInput = z.infer<typeof driverSchema>;
+export type DriverSalaryPaymentInput = z.infer<typeof driverSalaryPaymentSchema>;
 export type TripInput = z.infer<typeof tripSchema>;
 export type ExpenseInput = z.infer<typeof expenseSchema>;
 export type CompanySettingsInput = z.infer<typeof companySettingsSchema>;
