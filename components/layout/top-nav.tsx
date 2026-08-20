@@ -37,7 +37,7 @@ function getInitials(name?: string | null) {
 
 export function TopNav({ onMenuClick, user }: TopNavProps) {
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-slate-200 bg-white/95 px-4 backdrop-blur-md sm:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-slate-200/80 bg-white/80 px-4 shadow-sm backdrop-blur-xl sm:px-6">
       <Button
         type="button"
         variant="ghost"

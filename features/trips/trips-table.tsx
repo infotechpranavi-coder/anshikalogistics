@@ -11,8 +11,9 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { Copy, Eye, Pencil, Search, Trash2 } from "lucide-react";
+import { Copy, Eye, Pencil, Route, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { ModernPanel } from "@/components/shared/modern-panel";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -260,7 +261,7 @@ export function TripsTable({
   }
 
   return (
-    <div className="space-y-4">
+    <ModernPanel title="Trip records" description="Search, review, and manage fleet trips" icon={Route} bodyClassName="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <div className="relative w-full max-w-sm">
@@ -281,7 +282,7 @@ export function TripsTable({
       </div>
 
       {selectedCount > 0 ? (
-        <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="modern-selection-bar">
           <p className="text-sm font-medium text-slate-700">
             {selectedCount} selected
             {!allFilteredSelected && filteredCount > selectedCount ? (
@@ -312,9 +313,9 @@ export function TripsTable({
         </div>
       ) : null}
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+      <div className="modern-table-shell">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+          <thead className="modern-table-head">
             {table.getHeaderGroups().map((group) => (
               <tr key={group.id}>
                 {group.headers.map((header) => (
@@ -367,7 +368,7 @@ export function TripsTable({
           ) : null}
         </div>
       </div>
-    </div>
+    </ModernPanel>
   );
 }
 

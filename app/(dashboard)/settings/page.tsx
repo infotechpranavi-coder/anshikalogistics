@@ -7,8 +7,9 @@ export default async function SettingsPage() {
   if (!company) return <p>Company settings are unavailable.</p>;
 
   return (
-    <div className="space-y-6">
+    <div className="page-stack">
       <PageHeader
+        badge="Configuration"
         title="Settings"
         description="Add company address, contact, GST, and bank details. They appear on the invoice preview."
       />

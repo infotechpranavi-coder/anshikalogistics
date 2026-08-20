@@ -86,8 +86,9 @@ export default async function EditTripPage({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="page-stack">
       <PageHeader
+        badge="Trip editor"
         title={`Edit ${trip.tripNumber}`}
         description="Update trip details, then generate the invoice to open Preview."
       />

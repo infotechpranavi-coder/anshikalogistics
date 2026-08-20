@@ -15,7 +15,7 @@ import {
   YAxis,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import type { DashboardChartPoint } from "@/actions/dashboard";
 
 interface DashboardChartsProps {
@@ -190,9 +190,9 @@ function ChartCard({
   className?: string;
 }) {
   return (
-    <Card className={className}>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base text-slate-800">{title}</CardTitle>
+    <Card className={cn("overflow-hidden", className)}>
+      <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-teal-50/30 pb-4">
+        <CardTitle className="text-base text-slate-900">{title}</CardTitle>
       </CardHeader>
       <CardContent className="h-72 px-3 pb-5 sm:px-5">{children}</CardContent>
     </Card>

@@ -16,13 +16,15 @@ import {
   Users,
   WalletCards,
 } from "lucide-react";
+import type { ComponentType } from "react";
 import type { DashboardData } from "@/actions/dashboard";
 import { EmptyState } from "@/components/shared/empty-state";
+import { ModernPanel } from "@/components/shared/modern-panel";
 import { PageHeader } from "@/components/shared/page-header";
+import { SectionHeading } from "@/components/shared/section-heading";
 import { StatCard } from "@/components/shared/stat-card";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -40,7 +42,13 @@ const DashboardCharts = dynamic(
     ),
   {
     ssr: false,
-    loading: () => <div className="h-72 animate-pulse rounded-xl bg-slate-100" />,
+    loading: () => (
+      <div className="grid gap-5 lg:grid-cols-2">
+        <div className="h-72 animate-pulse rounded-[1.25rem] bg-slate-100 lg:col-span-2" />
+        <div className="h-72 animate-pulse rounded-[1.25rem] bg-slate-100" />
+        <div className="h-72 animate-pulse rounded-[1.25rem] bg-slate-100" />
+      </div>
+    ),
   }
 );
 
@@ -68,12 +76,13 @@ export function DashboardView({
   recentInvoices,
 }: DashboardViewProps) {
   return (
-    <div className="space-y-7">
+    <div className="page-stack">
       <PageHeader
+        badge="Overview"
         title="Anshika Logistics"
         description="Monitor trips, diesel costs, vehicles, and collections."
       >
-        <Button asChild>
+        <Button asChild className="shadow-sm">
           <Link href="/trips/new">
             <Plus className="h-4 w-4" />
             New trip
@@ -172,110 +181,103 @@ export function DashboardView({
       <section className="space-y-4">
         <SectionHeading title="Recent activity" description="Latest fleet records" />
         <div className="grid gap-5 2xl:grid-cols-2">
-          <Card className="2xl:col-span-2">
-            <CardHeader className="flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-base">Recent trips</CardTitle>
+          <ModernPanel
+            title="Recent trips"
+            action={
               <Button asChild variant="ghost" size="sm">
                 <Link href="/trips">
                   View all <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
-            </CardHeader>
-            <CardContent>
-              {recentTrips.length ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Trip</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Vehicle</TableHead>
-                      <TableHead>Route</TableHead>
-                      <TableHead>Total</TableHead>
-                      <TableHead>Status</TableHead>
+            }
+            bodyClassName="p-0 sm:p-0"
+          >
+            {recentTrips.length ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Trip</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Vehicle</TableHead>
+                    <TableHead>Route</TableHead>
+                    <TableHead>Total</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentTrips.map((trip) => (
+                    <TableRow key={trip.id}>
+                      <TableCell className="font-medium">
+                        <Link className="hover:text-teal-700" href={`/trips/${trip.id}`}>
+                          {trip.tripNumber}
+                        </Link>
+                      </TableCell>
+                      <TableCell>{formatDate(trip.tripDate)}</TableCell>
+                      <TableCell>{trip.vehicle.number}</TableCell>
+                      <TableCell className="max-w-64 truncate">
+                        {trip.source} → {trip.destination}
+                      </TableCell>
+                      <TableCell>{formatCurrency(trip.grandTotal)}</TableCell>
+                      <TableCell>
+                        <StatusBadge status={trip.status} />
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {recentTrips.map((trip) => (
-                      <TableRow key={trip.id}>
-                        <TableCell className="font-medium">
-                          <Link className="hover:text-teal-700" href={`/trips/${trip.id}`}>
-                            {trip.tripNumber}
-                          </Link>
-                        </TableCell>
-                        <TableCell>{formatDate(trip.tripDate)}</TableCell>
-                        <TableCell>{trip.vehicle.number}</TableCell>
-                        <TableCell className="max-w-64 truncate">
-                          {trip.source} → {trip.destination}
-                        </TableCell>
-                        <TableCell>{formatCurrency(trip.grandTotal)}</TableCell>
-                        <TableCell><StatusBadge status={trip.status} /></TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <CompactEmpty title="No trips yet" description="Create a trip to see activity here." />
-              )}
-            </CardContent>
-          </Card>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <CompactEmpty title="No trips yet" description="Create a trip to see activity here." />
+            )}
+          </ModernPanel>
 
-          <Card>
-            <CardHeader className="flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-base">Recent invoices</CardTitle>
+          <ModernPanel
+            title="Recent invoices"
+            action={
               <Button asChild variant="ghost" size="sm">
                 <Link href="/invoices">
                   View all <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
-            </CardHeader>
-            <CardContent>
-              {recentInvoices.length ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Invoice</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Total</TableHead>
-                      <TableHead>Pending</TableHead>
+            }
+            bodyClassName="p-0 sm:p-0"
+          >
+            {recentInvoices.length ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Invoice</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Total</TableHead>
+                    <TableHead>Pending</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentInvoices.map((invoice) => (
+                    <TableRow key={invoice.id}>
+                      <TableCell>
+                        <div className="font-medium">{invoice.invoiceNumber}</div>
+                        <div className="text-xs text-slate-500">{invoice.trip.tripNumber}</div>
+                      </TableCell>
+                      <TableCell>{formatDate(invoice.invoiceDate)}</TableCell>
+                      <TableCell>{formatCurrency(invoice.grandTotal)}</TableCell>
+                      <TableCell>
+                        <span className={invoice.pendingAmount > 0 ? "text-amber-700" : ""}>
+                          {formatCurrency(invoice.pendingAmount)}
+                        </span>
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {recentInvoices.map((invoice) => (
-                      <TableRow key={invoice.id}>
-                        <TableCell>
-                          <div className="font-medium">{invoice.invoiceNumber}</div>
-                          <div className="text-xs text-slate-500">{invoice.trip.tripNumber}</div>
-                        </TableCell>
-                        <TableCell>{formatDate(invoice.invoiceDate)}</TableCell>
-                        <TableCell>{formatCurrency(invoice.grandTotal)}</TableCell>
-                        <TableCell>
-                          <span className={invoice.pendingAmount > 0 ? "text-amber-700" : ""}>
-                            {formatCurrency(invoice.pendingAmount)}
-                          </span>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <CompactEmpty
-                  title="No invoices yet"
-                  description="Generated invoices will appear here."
-                />
-              )}
-            </CardContent>
-          </Card>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <CompactEmpty
+                title="No invoices yet"
+                description="Generated invoices will appear here."
+              />
+            )}
+          </ModernPanel>
         </div>
       </section>
-    </div>
-  );
-}
-
-function SectionHeading({ title, description }: { title: string; description: string }) {
-  return (
-    <div>
-      <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-      <p className="text-sm text-slate-500">{description}</p>
     </div>
   );
 }
@@ -286,25 +288,22 @@ function QuickAction({
   label,
 }: {
   href: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: ComponentType<{ className?: string }>;
   label: string;
 }) {
   return (
-    <Button
-      asChild
-      variant="outline"
-      className="h-auto justify-between bg-white px-4 py-4 text-slate-700"
+    <Link
+      href={href}
+      className="group flex h-auto items-center justify-between rounded-[1.15rem] border border-slate-200/80 bg-white px-4 py-4 text-slate-700 shadow-[0_12px_40px_-28px_rgba(15,23,42,0.35)] transition-all hover:-translate-y-0.5 hover:border-teal-200 hover:shadow-[0_18px_50px_-28px_rgba(15,118,110,0.25)]"
     >
-      <Link href={href}>
-        <span className="flex items-center gap-3">
-          <span className="grid h-9 w-9 place-items-center rounded-lg bg-teal-50 text-teal-700">
-            <Icon className="h-4 w-4" />
-          </span>
-          {label}
+      <span className="flex items-center gap-3">
+        <span className="grid h-10 w-10 place-items-center rounded-xl bg-teal-50 text-teal-700 transition-colors group-hover:bg-teal-100">
+          <Icon className="h-4 w-4" />
         </span>
-        <ArrowRight className="h-4 w-4 text-slate-400" />
-      </Link>
-    </Button>
+        <span className="font-semibold">{label}</span>
+      </span>
+      <ArrowRight className="h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-0.5 group-hover:text-teal-600" />
+    </Link>
   );
 }
 
@@ -318,7 +317,7 @@ function StatusBadge({ status }: { status: string }) {
 
 function CompactEmpty({ title, description }: { title: string; description: string }) {
   return (
-    <div className="[&>div]:min-h-48">
+    <div className="p-4 [&>div]:min-h-48 [&>div]:shadow-none">
       <EmptyState icon={ReceiptText} title={title} description={description} />
     </div>
   );

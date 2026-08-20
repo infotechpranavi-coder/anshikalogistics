@@ -8,8 +8,8 @@ export default async function InvoicesPage() {
   const invoices = (await getInvoices()).data ?? [];
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Invoices" description="Review generated invoices and outstanding balances." />
+    <div className="page-stack">
+      <PageHeader badge="Billing" title="Invoices" description="Review generated invoices and outstanding balances." />
       {invoices.length ? (
         <InvoicesPageTable data={invoices} />
       ) : (

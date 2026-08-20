@@ -84,6 +84,26 @@ label {
   .animate-in {
     animation: fade-in 0.2s ease-out;
   }
+
+  .readonly-field {
+    @apply border-slate-200/80 bg-slate-50 font-medium text-slate-700 shadow-none;
+  }
+
+  .page-stack {
+    @apply space-y-6;
+  }
+
+  .modern-table-shell {
+    @apply overflow-x-auto rounded-[1.25rem] border border-slate-200/80 bg-white shadow-[0_18px_50px_-30px_rgba(15,23,42,0.2)];
+  }
+
+  .modern-table-head {
+    @apply bg-gradient-to-r from-slate-50 to-white text-left text-xs uppercase tracking-[0.14em] text-slate-500;
+  }
+
+  .modern-selection-bar {
+    @apply flex flex-col gap-3 rounded-2xl border border-teal-100 bg-teal-50/50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between;
+  }
 }
 
 @keyframes fade-in {

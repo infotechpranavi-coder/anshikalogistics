@@ -20,8 +20,9 @@ export default async function TripsPage({
   const hasMore = (result.data?.totalPages ?? page) > page;
 
   return (
-    <div className="space-y-6">
+    <div className="page-stack">
       <PageHeader
+        badge="Fleet"
         title="Trips"
         description="Plan routes, track trip costs, and manage invoices."
       >

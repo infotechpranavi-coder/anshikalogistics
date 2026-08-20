@@ -26,13 +26,17 @@ export default async function InvoicePage({
   const liveData = invoiceToLiveData(invoice);
 
   return (
-    <div className="space-y-6">
-      <PageHeader title={invoice.invoiceNumber} description={`Issued ${formatDate(invoice.invoiceDate)}`}>
+    <div className="page-stack">
+      <PageHeader
+        badge="Invoice"
+        title={invoice.invoiceNumber}
+        description={`Issued ${formatDate(invoice.invoiceDate)}`}
+      >
         <Badge variant={invoice.status === "PAID" ? "success" : "warning"}>{invoice.status}</Badge>
         <DownloadInvoiceButton data={liveData} />
       </PageHeader>
 
-      <div className="rounded-2xl bg-slate-100 p-4 sm:p-6 print:bg-white print:p-0">
+      <div className="overflow-hidden rounded-[1.35rem] border border-slate-200/80 bg-gradient-to-b from-slate-100 to-white p-4 shadow-sm sm:p-6 print:border-0 print:bg-white print:p-0 print:shadow-none">
         <LiveInvoicePreview data={liveData} fullScreen />
       </div>
 

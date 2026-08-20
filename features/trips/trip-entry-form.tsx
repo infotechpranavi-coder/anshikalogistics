@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import type { FieldPath } from "react-hook-form";
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
-import { Plus, Trash2 } from "lucide-react";
+import { Fuel, MapPin, Plus, Receipt, Snowflake, Trash2, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { tripSchema, type TripInput } from "@/schemas";
 import { APP_LOGO } from "@/lib/brand";
+import { cn } from "@/lib/utils";
 import {
   calculateAcCharge,
   calculateAcLitres,
@@ -419,21 +420,31 @@ export function TripEntryForm({
 
   return (
     <form
-      className="space-y-5 [color-scheme:light] [&_label]:!text-slate-800 [&_input]:border-slate-200 [&_input]:bg-white [&_input]:text-slate-900 [&_input]:placeholder:text-slate-400 [&_button]:border-slate-200 [&_button]:bg-white [&_button]:text-slate-900 [&_textarea]:border-slate-200 [&_textarea]:bg-white [&_textarea]:text-slate-900"
+      className="space-y-5 scheme-light [&_input]:rounded-xl [&_input]:border-slate-200/90 [&_input]:bg-white [&_input]:text-slate-900 [&_input]:shadow-sm [&_input]:placeholder:text-slate-400 [&_textarea]:rounded-xl [&_textarea]:border-slate-200/90 [&_textarea]:bg-white [&_textarea]:text-slate-900"
       onSubmit={(event) => {
         event.preventDefault();
         void runAction("save");
       }}
       noValidate
     >
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-100 bg-slate-50 px-5 py-4">
-          <h2 className="text-base font-semibold tracking-tight text-slate-900">Trip details</h2>
-          <p className="mt-0.5 text-xs text-slate-500">Same columns as the vehicle diesel expense sheet</p>
+      <section className="overflow-hidden rounded-[1.35rem] border border-slate-200/80 bg-white shadow-[0_18px_50px_-30px_rgba(15,23,42,0.35)]">
+        <div className="border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-teal-50/40 px-5 py-5 sm:px-6">
+          <div className="flex items-start gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-600 text-white shadow-lg shadow-teal-600/20">
+              <Truck className="h-5 w-5" />
+            </span>
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight text-slate-950">Trip details</h2>
+              <p className="mt-0.5 text-sm text-slate-500">
+                Same columns as the vehicle diesel expense sheet
+              </p>
+            </div>
+          </div>
         </div>
-        <div className="space-y-4 p-5">
-          {/* Row 1: Date, Vehicle, Driver */}
-          <div className="grid gap-4 sm:grid-cols-3">
+
+        <div className="space-y-8 p-5 sm:p-6">
+          <FormSection title="Logistics" icon={MapPin} description="Date, vehicle, driver, and route">
+            <div className="grid gap-4 sm:grid-cols-3">
             <Field label="Date" error={errors.tripDate?.message}>
               <Input type="date" {...register("tripDate")} />
             </Field>
@@ -503,7 +514,6 @@ export function TripEntryForm({
             </Field>
           </div>
 
-          {/* Row 2: From, To */}
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="From" error={errors.source?.message}>
               <Input {...register("source")} placeholder="From" />
@@ -512,8 +522,9 @@ export function TripEntryForm({
               <Input {...register("destination")} placeholder="To" />
             </Field>
           </div>
+          </FormSection>
 
-          {/* Row 3: Loaded, Loading KM, Unloading KM, KM */}
+          <FormSection title="Distance & diesel" icon={Fuel} description="KM readings, mileage, and fuel litres">
           <div className="grid gap-4 sm:grid-cols-4">
             <Field label="Loaded empty">
               <Controller
@@ -559,7 +570,6 @@ export function TripEntryForm({
             />
           </div>
 
-          {/* Row 4: Mileage, Cost per Lt */}
           <div className="grid gap-4 sm:grid-cols-2">
             <NumberField
               label="Mileage (km/l)"
@@ -575,14 +585,13 @@ export function TripEntryForm({
             />
           </div>
 
-          {/* Row 5: Lt, Paid Lt, Pending Lt */}
           <div className="grid gap-4 sm:grid-cols-3">
             <Field label="Lt">
               <Input
                 value={fuelRequired.toFixed(2)}
                 readOnly
                 tabIndex={-1}
-                className="bg-slate-50 font-medium text-slate-700"
+                className="readonly-field"
               />
             </Field>
             <NumberField label="Paid Lt" name="fuelFilled" register={register} error={errors.fuelFilled?.message} />
@@ -591,19 +600,20 @@ export function TripEntryForm({
                 value={pendingLt.toFixed(2)}
                 readOnly
                 tabIndex={-1}
-                className="bg-slate-50 font-medium text-slate-700"
+                className="readonly-field"
               />
             </Field>
           </div>
+          </FormSection>
 
-          {/* Row 6: Entry, Desil Amt, Trip Amount */}
+          <FormSection title="Trip financials" icon={Receipt} description="Entry, diesel amount, and trip total">
           <div className="grid gap-4 sm:grid-cols-3">
             <Field label="Entry">
               <Input
                 value={entry.toFixed(2)}
                 readOnly
                 tabIndex={-1}
-                className="bg-slate-50 font-medium text-slate-700"
+                className="readonly-field"
               />
             </Field>
             <Field label="Desil Amt">
@@ -611,7 +621,7 @@ export function TripEntryForm({
                 value={dieselAmt.toFixed(2)}
                 readOnly
                 tabIndex={-1}
-                className="bg-slate-50 font-medium text-slate-700"
+                className="readonly-field"
               />
             </Field>
             <Field label="Trip Amount">
@@ -619,12 +629,16 @@ export function TripEntryForm({
                 value={tripAmount.toFixed(2)}
                 readOnly
                 tabIndex={-1}
-                className={`bg-slate-50 font-semibold ${tripAmount < 0 ? "text-red-600" : "text-slate-800"}`}
+                className={cn(
+                  "readonly-field font-semibold",
+                  tripAmount < 0 ? "text-red-600" : "text-teal-800"
+                )}
               />
             </Field>
           </div>
+          </FormSection>
 
-          {/* Row 7: AC per hour, start/end, usage, litres, paid ltr, AC diesel, total */}
+          <FormSection title="AC charges" icon={Snowflake} description="Usage hours, litres, and AC diesel amount">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <NumberField
               label="AC per hour"
@@ -645,7 +659,7 @@ export function TripEntryForm({
                 step="0.01"
                 readOnly={acHoursFromTimes != null}
                 tabIndex={acHoursFromTimes != null ? -1 : undefined}
-                className={acHoursFromTimes != null ? "bg-slate-50 font-medium text-slate-700" : undefined}
+                className={acHoursFromTimes != null ? "readonly-field" : undefined}
                 {...register("acHours", { valueAsNumber: true })}
               />
             </Field>
@@ -654,7 +668,7 @@ export function TripEntryForm({
                 value={`${acLitres.toFixed(2)} Ltr`}
                 readOnly
                 tabIndex={-1}
-                className="bg-slate-50 font-medium text-slate-700"
+                className="readonly-field"
               />
             </Field>
             <NumberField
@@ -668,45 +682,56 @@ export function TripEntryForm({
                 value={acCharge.toFixed(2)}
                 readOnly
                 tabIndex={-1}
-                className="bg-slate-50 font-medium text-slate-700"
+                className="readonly-field font-medium text-teal-800"
               />
             </Field>
           </div>
+          </FormSection>
 
-          <div className="rounded-xl border-2 border-slate-800 bg-slate-50 px-4 py-3">
-            <p className="text-[13px] font-semibold text-slate-800">Total Amount</p>
-            <p className="mt-1 break-words font-mono text-sm leading-6 text-slate-800">
-              {formatSignedAmount(tripAmount)} (Trip Amount) {formatSignedAmount(acCharge, true)} (AC charge) ={" "}
-              <span className={`font-semibold ${totalAmount < 0 ? "text-red-600" : "text-slate-900"}`}>
+          <div className="overflow-hidden rounded-2xl border border-teal-200/80 bg-gradient-to-br from-teal-50 via-white to-slate-50 px-5 py-4 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.14em] text-teal-700">Total amount</p>
+                <p className="mt-2 wrap-break-word font-mono text-sm leading-7 text-slate-700">
+                  {formatSignedAmount(tripAmount)} (Trip Amount) {formatSignedAmount(acCharge, true)} (AC charge) ={" "}
+                  <span className={`font-semibold ${totalAmount < 0 ? "text-red-600" : "text-slate-950"}`}>
+                    {formatSignedAmount(totalAmount)}
+                  </span>
+                </p>
+              </div>
+              <p
+                className={`text-3xl font-bold tracking-tight ${totalAmount < 0 ? "text-red-600" : "text-slate-950"}`}
+              >
                 {formatSignedAmount(totalAmount)}
-              </span>
-            </p>
-            <p
-              className={`mt-2 text-right text-xl font-bold ${totalAmount < 0 ? "text-red-600" : "text-slate-900"}`}
-            >
-              {formatSignedAmount(totalAmount)}
-            </p>
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-5 py-4">
-          <div>
-            <h2 className="text-base font-semibold tracking-tight text-slate-900">Other expenses</h2>
-            <p className="mt-0.5 text-xs text-slate-500">Toll, parking, food, repair, or any extra trip cost</p>
+      <section className="overflow-hidden rounded-[1.35rem] border border-slate-200/80 bg-white shadow-[0_18px_50px_-30px_rgba(15,23,42,0.35)]">
+        <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-slate-50 px-5 py-5 sm:px-6">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white">
+              <Receipt className="h-4 w-4" />
+            </span>
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight text-slate-950">Other expenses</h2>
+              <p className="mt-0.5 text-sm text-slate-500">Toll, parking, food, repair, or any extra trip cost</p>
+            </div>
           </div>
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={() => append({ title: "", amount: 0 })}
+            className="rounded-xl border-slate-200 bg-white shadow-sm"
           >
             <Plus className="h-4 w-4" />
             Add expense
           </Button>
         </div>
-        <div className="space-y-3 p-5">
+        <div className="space-y-3 p-5 sm:p-6">
           {extraExpenseFields.length ? (
             extraExpenseFields.map((field, index) => (
               <div key={field.id} className="grid gap-3 sm:grid-cols-[1fr_160px_auto]">
@@ -731,10 +756,12 @@ export function TripEntryForm({
               </div>
             ))
           ) : (
-            <p className="text-sm text-slate-500">No other expenses yet. Click Add expense to include extra costs.</p>
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-4 py-8 text-center text-sm text-slate-500">
+              No other expenses yet. Click Add expense to include extra costs.
+            </div>
           )}
           {extraTotal > 0 ? (
-            <p className="text-right text-sm font-medium text-slate-700">
+            <p className="text-right text-sm font-semibold text-slate-700">
               Other expenses total: {extraTotal.toFixed(2)}
             </p>
           ) : null}
@@ -742,9 +769,38 @@ export function TripEntryForm({
       </section>
 
       {actionError ? (
-        <p role="alert" className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{actionError}</p>
+        <p role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {actionError}
+        </p>
       ) : null}
     </form>
+  );
+}
+
+function FormSection({
+  title,
+  description,
+  icon: Icon,
+  children,
+}: {
+  title: string;
+  description: string;
+  icon: ComponentType<{ className?: string }>;
+  children: ReactNode;
+}) {
+  return (
+    <div className="space-y-4 rounded-2xl border border-slate-100 bg-slate-50/40 p-4 sm:p-5">
+      <div className="flex items-start gap-3 border-b border-slate-200/70 pb-4">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-teal-700 ring-1 ring-slate-200/80">
+          <Icon className="h-4 w-4" />
+        </span>
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+          <p className="mt-0.5 text-xs text-slate-500">{description}</p>
+        </div>
+      </div>
+      <div className="space-y-4">{children}</div>
+    </div>
   );
 }
 
@@ -761,11 +817,11 @@ function Field({
 }: {
   label: string;
   error?: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <div className="space-y-2">
-      <Label className="!text-[13px] !font-semibold !text-slate-800">{label}</Label>
+      <Label className="text-[13px] font-semibold text-slate-700">{label}</Label>
       {children}
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
     </div>

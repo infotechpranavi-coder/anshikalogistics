@@ -34,8 +34,9 @@ export function VehiclesPageContent({
   }, [initialVehicles]);
 
   return (
-    <div className="space-y-6">
+    <div className="page-stack">
       <PageHeader
+        badge="Fleet"
         title="Vehicles"
         description="Manage fleet details, assignments, and document expiries."
       >
@@ -48,13 +49,14 @@ export function VehiclesPageContent({
       <VehiclesPageTable data={vehicles} />
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg bg-white text-slate-900">
-          <DialogHeader>
+        <DialogContent className="max-w-lg overflow-hidden rounded-[1.25rem] border-slate-200/80 bg-white p-0 text-slate-900 shadow-2xl">
+          <DialogHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-teal-50/30 px-6 py-5">
             <DialogTitle>Add vehicle</DialogTitle>
             <DialogDescription className="text-slate-600">
               Enter the vehicle number and basic fleet details. The new row appears in the table after you save.
             </DialogDescription>
           </DialogHeader>
+          <div className="px-6 py-5">
           <VehicleForm
             key={open ? "open" : "closed"}
             embedded
@@ -72,6 +74,7 @@ export function VehiclesPageContent({
               router.refresh();
             }}
           />
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -74,8 +74,9 @@ export default async function NewTripPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="page-stack">
       <PageHeader
+        badge="Trip editor"
         title="New Trip"
         description="Enter trip details, then generate the invoice to open Preview."
       />

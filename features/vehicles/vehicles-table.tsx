@@ -10,7 +10,8 @@ import {
   getPaginationRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { Eye, Pencil, Search, Trash2 } from "lucide-react";
+import { Eye, Pencil, Search, Trash2, Truck } from "lucide-react";
+import { ModernPanel } from "@/components/shared/modern-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -185,7 +186,7 @@ export function VehiclesTable({
   }
 
   return (
-    <div className="space-y-4">
+    <ModernPanel title="Vehicle records" description="Search and manage fleet vehicles" icon={Truck} bodyClassName="space-y-4">
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
         <Input
@@ -197,7 +198,7 @@ export function VehiclesTable({
       </div>
 
       {selectedCount > 0 ? (
-        <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="modern-selection-bar">
           <p className="text-sm font-medium text-slate-700">
             {selectedCount} selected
             {!allFilteredSelected && filteredCount > selectedCount ? (
@@ -232,9 +233,9 @@ export function VehiclesTable({
         </div>
       ) : null}
 
-      <div className="overflow-x-auto rounded-xl border bg-white">
+      <div className="modern-table-shell">
         <table className="w-full min-w-275 text-sm">
-          <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
+          <thead className="modern-table-head">
             {table.getHeaderGroups().map((group) => (
               <tr key={group.id}>
                 {group.headers.map((header) => (
@@ -274,6 +275,6 @@ export function VehiclesTable({
           Next
         </Button>
       </div>
-    </div>
+    </ModernPanel>
   );
 }

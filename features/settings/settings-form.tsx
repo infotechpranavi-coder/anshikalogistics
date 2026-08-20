@@ -2,6 +2,8 @@
 
 import { useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
+import { Building2, Landmark } from "lucide-react";
+import { ModernPanel } from "@/components/shared/modern-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,13 +42,11 @@ export function SettingsForm({
 
   return (
     <form onSubmit={save} className="space-y-6">
-      <section className="space-y-4 rounded-xl border bg-white p-6">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">Invoice letterhead</h2>
-          <p className="mt-0.5 text-sm text-slate-500">
-            These details appear at the top of every invoice preview.
-          </p>
-        </div>
+      <ModernPanel
+        title="Invoice letterhead"
+        description="These details appear at the top of every invoice preview."
+        icon={Building2}
+      >
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Company name" error={errors.name?.message}>
             <Input {...register("name")} />
@@ -70,13 +70,13 @@ export function SettingsForm({
             </Field>
           </div>
         </div>
-      </section>
+      </ModernPanel>
 
-      <section className="space-y-4 rounded-xl border bg-white p-6">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">Bank details</h2>
-          <p className="mt-0.5 text-sm text-slate-500">Shown at the bottom of the invoice preview.</p>
-        </div>
+      <ModernPanel
+        title="Bank details"
+        description="Shown at the bottom of the invoice preview."
+        icon={Landmark}
+      >
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Bank Name" error={errors.bankName?.message}>
             <Input {...register("bankName")} placeholder="YES BANK" />
@@ -94,14 +94,20 @@ export function SettingsForm({
             <Input {...register("upiId")} />
           </Field>
         </div>
-      </section>
+      </ModernPanel>
 
       {message ? (
-        <p className={message.startsWith("Settings saved") ? "text-emerald-700" : "text-red-700"}>
+        <p
+          className={
+            message.startsWith("Settings saved")
+              ? "rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"
+              : "rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          }
+        >
           {message}
         </p>
       ) : null}
-      <Button type="submit" disabled={isSubmitting}>
+      <Button type="submit" disabled={isSubmitting} className="shadow-sm">
         {isSubmitting ? "Saving…" : "Save settings"}
       </Button>
     </form>
@@ -119,7 +125,7 @@ function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <Label>{label}</Label>
+      <Label className="text-slate-700">{label}</Label>
       {children}
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
     </div>
