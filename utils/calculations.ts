@@ -47,13 +47,8 @@ export function calculateGrandTotal(entry: number, fuelCost: number, expenseTota
   return round2((entry || 0) + (fuelCost || 0) + (expenseTotal || 0));
 }
 
-export function calculateTotalAmount(
-  entry: number,
-  dieselAmt: number,
-  acCharge = 0,
-  extraTotal = 0
-): number {
-  return round2((entry || 0) + (dieselAmt || 0) + (acCharge || 0) + (extraTotal || 0));
+export function calculateTotalAmount(tripAmount: number, acCharge = 0): number {
+  return round2((tripAmount || 0) + (acCharge || 0));
 }
 
 export function calculatePending(grandTotal: number, paidAmount: number): number {
@@ -178,7 +173,8 @@ export function calculateTripTotals(input: TripCalculationInput): TripCalculatio
     miscExpense: input.miscExpense,
   });
   const entry = calculateEntry(distance, input.isLoaded ?? true, input.isEmpty);
-  const grandTotal = calculateTotalAmount(entry, fuelCost, acCharge, expenseTotal);
+  const tripAmount = calculateGrandTotal(entry, fuelCost, expenseTotal);
+  const grandTotal = calculateTotalAmount(tripAmount, acCharge);
   const pendingAmount = calculatePending(grandTotal, input.paidAmount);
 
   return {

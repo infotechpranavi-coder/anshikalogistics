@@ -210,8 +210,8 @@ export function TripEntryForm({
     (item) => item.title?.trim() && numberValue(item.amount) > 0
   );
   const extraTotal = extraExpenses.reduce((sum, item) => sum + numberValue(item.amount), 0);
-  const finalAmount = calculateGrandTotal(entry, dieselAmt, extraTotal);
-  const totalAmount = calculateTotalAmount(entry, dieselAmt, acCharge, extraTotal);
+  const tripAmount = calculateGrandTotal(entry, dieselAmt, extraTotal);
+  const totalAmount = calculateTotalAmount(tripAmount, acCharge);
 
   useEffect(() => {
     const km = Math.max(0, unloadingKm - loadingKm);
@@ -596,7 +596,7 @@ export function TripEntryForm({
             </Field>
           </div>
 
-          {/* Row 6: Entry, Desil Amt, Final Amount */}
+          {/* Row 6: Entry, Desil Amt, Trip Amount */}
           <div className="grid gap-4 sm:grid-cols-3">
             <Field label="Entry">
               <Input
@@ -614,12 +614,12 @@ export function TripEntryForm({
                 className="bg-slate-50 font-medium text-slate-700"
               />
             </Field>
-            <Field label="Final Amount">
+            <Field label="Trip Amount">
               <Input
-                value={finalAmount.toFixed(2)}
+                value={tripAmount.toFixed(2)}
                 readOnly
                 tabIndex={-1}
-                className={`bg-slate-50 font-semibold ${finalAmount < 0 ? "text-red-600" : "text-slate-800"}`}
+                className={`bg-slate-50 font-semibold ${tripAmount < 0 ? "text-red-600" : "text-slate-800"}`}
               />
             </Field>
           </div>
@@ -676,8 +676,7 @@ export function TripEntryForm({
           <div className="rounded-xl border-2 border-slate-800 bg-slate-50 px-4 py-3">
             <p className="text-[13px] font-semibold text-slate-800">Total Amount</p>
             <p className="mt-1 break-words font-mono text-sm leading-6 text-slate-800">
-              {formatSignedAmount(entry)} (Entry) {formatSignedAmount(dieselAmt, true)} (Desil Amt){" "}
-              {formatSignedAmount(acCharge, true)} (AC diesel) {formatSignedAmount(extraTotal, true)} (Other expenses) ={" "}
+              {formatSignedAmount(tripAmount)} (Trip Amount) {formatSignedAmount(acCharge, true)} (AC charge) ={" "}
               <span className={`font-semibold ${totalAmount < 0 ? "text-red-600" : "text-slate-900"}`}>
                 {formatSignedAmount(totalAmount)}
               </span>
