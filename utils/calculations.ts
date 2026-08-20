@@ -96,6 +96,18 @@ export function hoursBetweenTimes(start?: string, end?: string): number | null {
   return round2(mins / 60);
 }
 
+/** Total AC usage from Start/End meter readings: End − Start */
+export function readingDifference(
+  start?: string | number | null,
+  end?: string | number | null
+): number | null {
+  if (start === "" || start == null || end === "" || end == null) return null;
+  const from = Number(start);
+  const to = Number(end);
+  if (!Number.isFinite(from) || !Number.isFinite(to)) return null;
+  return round2(Math.max(0, to - from));
+}
+
 export function calculateAcDieselAmount(
   acLitres: number,
   acPaidLt: number,

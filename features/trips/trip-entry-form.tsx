@@ -26,7 +26,7 @@ import {
   calculateGrandTotal,
   calculateTotalAmount,
   calculatePendingLt,
-  hoursBetweenTimes,
+  readingDifference,
   DEFAULT_AC_LITRES_PER_HOUR,
 } from "@/utils/calculations";
 import type { LiveInvoiceData, TripFormValues } from "@/types";
@@ -195,8 +195,8 @@ export function TripEntryForm({
   const acStartTime = useWatch({ control, name: "acStartTime" }) ?? "";
   const acEndTime = useWatch({ control, name: "acEndTime" }) ?? "";
   const acPaidLt = numberValue(useWatch({ control, name: "acPaidLt" }));
-  const acHoursFromTimes = hoursBetweenTimes(acStartTime, acEndTime);
-  const acUsageHours = acHoursFromTimes ?? acHours;
+  const acHoursFromReadings = readingDifference(acStartTime, acEndTime);
+  const acUsageHours = acHoursFromReadings ?? acHours;
   const acLitres = calculateAcLitres(acUsageHours, acLitresPerHour);
   const pendingLt = calculatePendingLt(fuelRequired, fuelFilled, acLitres);
   const tripDieselLt = calculatePendingLt(fuelRequired, fuelFilled, 0);
@@ -220,9 +220,9 @@ export function TripEntryForm({
   }, [loadingKm, unloadingKm, setValue]);
 
   useEffect(() => {
-    if (acHoursFromTimes == null) return;
-    setValue("acHours", acHoursFromTimes, { shouldDirty: false });
-  }, [acHoursFromTimes, setValue]);
+    if (acHoursFromReadings == null) return;
+    setValue("acHours", acHoursFromReadings, { shouldDirty: false });
+  }, [acHoursFromReadings, setValue]);
 
   useEffect(() => {
     const lt = calculateFuelRequired(distance, mileage);
@@ -638,7 +638,7 @@ export function TripEntryForm({
           </div>
           </FormSection>
 
-          <FormSection title="AC charges" icon={Snowflake} description="Usage hours, litres, and AC diesel amount">
+          <FormSection title="AC charges" icon={Snowflake} description="Start and End readings; Total AC usage = End − Start">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <NumberField
               label="AC per hour"
@@ -647,19 +647,31 @@ export function TripEntryForm({
               error={errors.acLitresPerHour?.message}
             />
             <Field label="Start" error={errors.acStartTime?.message}>
-              <Input type="time" {...register("acStartTime")} />
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="e.g. 87"
+                {...register("acStartTime")}
+              />
             </Field>
             <Field label="End" error={errors.acEndTime?.message}>
-              <Input type="time" {...register("acEndTime")} />
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="e.g. 114"
+                {...register("acEndTime")}
+              />
             </Field>
             <Field label="Total AC usage" error={errors.acHours?.message}>
               <Input
                 type="number"
                 min="0"
                 step="0.01"
-                readOnly={acHoursFromTimes != null}
-                tabIndex={acHoursFromTimes != null ? -1 : undefined}
-                className={acHoursFromTimes != null ? "readonly-field" : undefined}
+                readOnly={acHoursFromReadings != null}
+                tabIndex={acHoursFromReadings != null ? -1 : undefined}
+                className={acHoursFromReadings != null ? "readonly-field" : undefined}
                 {...register("acHours", { valueAsNumber: true })}
               />
             </Field>
